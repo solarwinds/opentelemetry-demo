@@ -29,5 +29,7 @@ WORKDIR /usr/src/app/
 
 COPY --from=builder /go/bin/checkoutservice/ ./
 
+ENV SW_APM_COLLECTOR=apm.collector.na-01.st-ssp.solarwinds.com:443
+ENV SW_APM_SERVICE_KEY=<service-key>:checkoutservice
 EXPOSE ${CHECKOUT_SERVICE_PORT}
 ENTRYPOINT [ "./checkoutservice" ]

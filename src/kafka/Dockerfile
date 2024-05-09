@@ -6,10 +6,11 @@ FROM apache/kafka:3.7.0
 
 USER root
 ARG version=2.3.0
-ADD --chmod=644 https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v$version/opentelemetry-javaagent.jar /tmp/opentelemetry-javaagent.jar
+ADD --chmod=644 https://agent-binaries.cloud.solarwinds.com/apm/java/$version/solarwinds-apm-agent.jar /tmp/opentelemetry-javaagent.jar
 
 USER appuser
-
+ENV SW_APM_COLLECTOR=apm.collector.na-01.st-ssp.solarwinds.com
+ENV SW_APM_SERVICE_KEY=<service-key>
 ENV KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
 ENV KAFKA_CONTROLLER_QUORUM_VOTERS='1@0.0.0.0:9093'
 ENV KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER

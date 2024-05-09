@@ -8,11 +8,16 @@
 ## Note: the spanmetrics exporter must be included in the exporters array
 ## if overriding the traces pipeline.
 ##
-#  exporters:
-#    otlphttp/example:
-#      endpoint: <your-endpoint-url>
+exporters:
+  otlp:
+    endpoint: "https://otel.collector.na-01.st-ssp.solarwinds.com:443"
+    headers:
+      Authorization: "Bearer <service-key>"
+
 #
-#  service:
-#    pipelines:
-#      traces:
-#        exporters: [spanmetrics, otlphttp/example]
+service:
+  pipelines:
+    traces:
+      exporters: [spanmetrics, otlp]
+    metrics:
+      exporters: [otlp]

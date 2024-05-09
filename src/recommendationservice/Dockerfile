@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-FROM python:3.12-slim-bookworm as base
+FROM python:3.10-slim-bookworm as base
 
 #
 # Fetch requirements
@@ -17,6 +17,7 @@ COPY ./src/recommendationservice/requirements.txt ./
 
 RUN pip install --upgrade pip
 RUN pip install --prefix="/reqs" -r requirements.txt
+RUN pip install --prefix="/reqs" solarwinds-apm
 
 #
 # Build gRPC files
@@ -39,5 +40,7 @@ COPY ./src/recommendationservice/ ./
 
 RUN opentelemetry-bootstrap -a install
 
+ENV SW_APM_COLLECTOR=apm.collector.na-01.st-ssp.solarwinds.com
+ENV SW_APM_SERVICE_KEY=<service-key>:recommendationservice
 EXPOSE ${RECOMMENDATION_SERVICE_PORT}
 ENTRYPOINT [ "opentelemetry-instrument", "python", "recommendation_server.py" ]

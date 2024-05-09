@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/solarwinds/apm-go/swo"
 	"net"
 	"net/http"
 	"os"
@@ -20,6 +21,9 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/google/uuid"
+	otelhooks "github.com/open-feature/go-sdk-contrib/hooks/open-telemetry/pkg"
+	flagd "github.com/open-feature/go-sdk-contrib/providers/flagd/pkg"
+	"github.com/open-feature/go-sdk/openfeature"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -34,9 +38,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
-	flagd "github.com/open-feature/go-sdk-contrib/providers/flagd/pkg"
-	"github.com/open-feature/go-sdk/openfeature"
-	otelhooks "github.com/open-feature/go-sdk-contrib/hooks/open-telemetry/pkg"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -139,8 +140,9 @@ type checkoutService struct {
 func main() {
 	var port string
 	mustMapEnv(&port, "CHECKOUT_SERVICE_PORT")
-
-	tp := initTracerProvider()
+	cb, _ := swo.Start()
+	defer cb()
+	/*tp := initTracerProvider()
 	defer func() {
 		if err := tp.Shutdown(context.Background()); err != nil {
 			log.Printf("Error shutting down tracer provider: %v", err)
@@ -152,7 +154,7 @@ func main() {
 		if err := mp.Shutdown(context.Background()); err != nil {
 			log.Printf("Error shutting down meter provider: %v", err)
 		}
-	}()
+	}()*/
 
 	err := runtime.Start(runtime.WithMinimumReadMemStatsInterval(time.Second))
 	if err != nil {
@@ -162,7 +164,7 @@ func main() {
 	openfeature.SetProvider(flagd.NewProvider())
 	openfeature.AddHooks(otelhooks.NewTracesHook())
 
-	tracer = tp.Tracer("checkoutservice")
+	tracer = otel.Tracer("checkoutservice")
 
 	svc := new(checkoutService)
 
@@ -440,13 +442,13 @@ func (cs *checkoutService) convertCurrency(ctx context.Context, from *pb.Money, 
 }
 
 func (cs *checkoutService) chargeCard(ctx context.Context, amount *pb.Money, paymentInfo *pb.CreditCardInfo) (string, error) {
-    paymentService := cs.paymentSvcClient
+	paymentService := cs.paymentSvcClient
 	if cs.isFeatureFlagEnabled(ctx, "paymentServiceUnreachable") {
-        badAddress := "badAddress:50051"
-        c := mustCreateClient(context.Background(), badAddress)
+		badAddress := "badAddress:50051"
+		c := mustCreateClient(context.Background(), badAddress)
 		paymentService = pb.NewPaymentServiceClient(c)
-    }
-	
+	}
+
 	paymentResp, err := paymentService.Charge(ctx, &pb.ChargeRequest{
 		Amount:     amount,
 		CreditCard: paymentInfo})
@@ -512,10 +514,10 @@ func (cs *checkoutService) sendToPostProcessor(ctx context.Context, result *pb.O
 	if ffValue > 0 {
 		log.Infof("Warning: FeatureFlag 'kafkaQueueProblems' is activated, overloading queue now.")
 		for i := 0; i < ffValue; i++ {
-    		go func(i int) {
-    		    cs.KafkaProducerClient.Input() <- &msg
+			go func(i int) {
+				cs.KafkaProducerClient.Input() <- &msg
 				_ = <-cs.KafkaProducerClient.Successes()
-            }(i)
+			}(i)
 		}
 		log.Infof("Done with #%d messages for overload simulation.", ffValue)
 	}
@@ -548,29 +550,29 @@ func createProducerSpan(ctx context.Context, msg *sarama.ProducerMessage) trace.
 }
 
 func (cs *checkoutService) isFeatureFlagEnabled(ctx context.Context, featureFlagName string) bool {
-    client := openfeature.NewClient("checkout")
-	
-    // Default value is set to false, but you could also make this a parameter.
-    featureEnabled, _ := client.BooleanValue(
-        ctx, 
-        featureFlagName, 
-        false, 
-        openfeature.EvaluationContext{},
-    )
-    
-    return featureEnabled
+	client := openfeature.NewClient("checkout")
+
+	// Default value is set to false, but you could also make this a parameter.
+	featureEnabled, _ := client.BooleanValue(
+		ctx,
+		featureFlagName,
+		false,
+		openfeature.EvaluationContext{},
+	)
+
+	return featureEnabled
 }
 
 func (cs *checkoutService) getIntFeatureFlag(ctx context.Context, featureFlagName string) int {
-    client := openfeature.NewClient("checkout")
-    
-    // Default value is set to 0, but you could also make this a parameter.
-    featureFlagValue, _ := client.IntValue(
-        ctx, 
-        featureFlagName, 
-        0, 
-        openfeature.EvaluationContext{},
-    )
-    
-    return int(featureFlagValue)
+	client := openfeature.NewClient("checkout")
+
+	// Default value is set to 0, but you could also make this a parameter.
+	featureFlagValue, _ := client.IntValue(
+		ctx,
+		featureFlagName,
+		0,
+		openfeature.EvaluationContext{},
+	)
+
+	return int(featureFlagValue)
 }

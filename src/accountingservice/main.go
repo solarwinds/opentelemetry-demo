@@ -9,6 +9,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/solarwinds/apm-go/swo"
 	"os"
 	"os/signal"
 	"strings"
@@ -79,16 +80,17 @@ func initTracerProvider() (*sdktrace.TracerProvider, error) {
 }
 
 func main() {
-	tp, err := initTracerProvider()
+	//tp, err := initTracerProvider()
+	cb, err := swo.Start()
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer func() {
+	defer cb() /*func() {
 		if err := tp.Shutdown(context.Background()); err != nil {
 			log.Printf("Error shutting down tracer provider: %v", err)
 		}
 		log.Println("Shutdown trace provider")
-	}()
+	}()*/
 
 	var brokers string
 	mustMapEnv(&brokers, "KAFKA_SERVICE_ADDR")

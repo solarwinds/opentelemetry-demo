@@ -9,6 +9,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/solarwinds/apm-go/swo"
 	"io/fs"
 	"net"
 	"os"
@@ -113,7 +114,9 @@ func initMeterProvider() *sdkmetric.MeterProvider {
 }
 
 func main() {
-	tp := initTracerProvider()
+	cb, _ := swo.Start()
+	defer cb()
+	/*tp := initTracerProvider()
 	defer func() {
 		if err := tp.Shutdown(context.Background()); err != nil {
 			log.Fatalf("Tracer Provider Shutdown: %v", err)
@@ -127,7 +130,7 @@ func main() {
 			log.Fatalf("Error shutting down meter provider: %v", err)
 		}
 		log.Println("Shutdown meter provider")
-	}()
+	}()*/
 	err := openfeature.SetProvider(flagd.NewProvider())
 	if err != nil {
 		log.Fatal(err)

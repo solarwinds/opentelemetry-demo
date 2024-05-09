@@ -28,5 +28,6 @@ FROM alpine
 WORKDIR /usr/src/app/
 
 COPY --from=builder /go/bin/accountingservice/ ./
-
+ENV SW_APM_COLLECTOR=apm.collector.na-01.st-ssp.solarwinds.com:443
+ENV SW_APM_SERVICE_KEY=<service-key>:accounting-service
 ENTRYPOINT [ "./accountingservice" ]
