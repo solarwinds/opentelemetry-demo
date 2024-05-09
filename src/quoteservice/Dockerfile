@@ -12,13 +12,11 @@ RUN chmod +x /usr/local/bin/install-php-extensions \
     protobuf
 
 # APM agent
-RUN curl -sSO https://agent-binaries.cloud.solarwinds.com/apm/php/latest/solarwinds-apm-php.sh;sh solarwinds-apm-php.sh --service-key=B8zYvgvsuL8WwihvmnuL1AXqgjjDvnw4UwyWkqsWU91JEImAxbQ3WT-cb207CdzKR1JBvmc:apm-opentelemetry-demo-quoteservice
+RUN curl -sSO https://agent-binaries.cloud.solarwinds.com/apm/php/latest/solarwinds-apm-php.sh;sh solarwinds-apm-php.sh --service-key=0RTv7cwVZLVjIZvKCQOtxqOyGYGhjngu4V6eixLH_-BRMjPofJs4UnDoZQ9Zds3yd-APKhY:apm-opentelemetry-demo-quoteservice
+# RUN curl -sSO https://agent-binaries.cloud.solarwinds.com/apm/php/latest/solarwinds-apm-php.sh;sh solarwinds-apm-php.sh --service-key=B8zYvgvsuL8WwihvmnuL1AXqgjjDvnw4UwyWkqsWU91JEImAxbQ3WT-cb207CdzKR1JBvmc:apm-opentelemetry-demo-quoteservice --collector=apm-testcollector.click
 
-# RUN echo "\nsolarwinds-apm.debug_level = 6" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
+RUN echo "\nsolarwinds-apm.debug_level = 6" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
 RUN echo "\nsolarwinds-apm.enable_cli = 1" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
-RUN echo "\nsolarwinds-apm.enable_profiling = 1" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
-RUN echo "\nsolarwinds-apm.sqltagger = 1" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
-RUN echo "\nsolarwinds-apm.log_trace_id = 1" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
 RUN echo "\n" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
 
 # RUN cp /usr/local/etc/php/php.ini-development /usr/local/etc/php/php.ini
