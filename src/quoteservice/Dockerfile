@@ -9,8 +9,14 @@ RUN chmod +x /usr/local/bin/install-php-extensions \
   && install-php-extensions \
     opcache \
     pcntl \
-    protobuf \
-    opentelemetry
+    protobuf
+
+# APM agent
+RUN curl -sSO https://agent-binaries.cloud.solarwinds.com/apm/php/latest/solarwinds-apm-php.sh;sh solarwinds-apm-php.sh --service-key=<token>:apm-opentelemetry-demo-quoteservice
+
+RUN echo "\nsolarwinds-apm.debug_level = 6" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
+RUN echo "\nsolarwinds-apm.enable_cli = 1" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
+RUN echo "\n" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
 
 WORKDIR /var/www
 CMD php public/index.php
