@@ -39,6 +39,7 @@ import (
 	"github.com/open-feature/go-sdk/openfeature"
 	pb "github.com/opentelemetry/opentelemetry-demo/src/product-catalog/genproto/oteldemo"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -156,7 +157,9 @@ func main() {
 	reflection.Register(srv)
 
 	pb.RegisterProductCatalogServiceServer(srv, svc)
-	healthpb.RegisterHealthServer(srv, svc)
+
+	healthcheck := health.NewServer()
+	healthpb.RegisterHealthServer(srv, healthcheck)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
 	defer cancel()
@@ -309,9 +312,9 @@ func (p *productCatalog) GetProduct(ctx context.Context, req *pb.GetProductReque
 		return nil, status.Errorf(codes.NotFound, msg)
 	}
 
-	msg := fmt.Sprintf("Product Found - ID: %s, Name: %s", req.Id, found.Name)
-	span.AddEvent(msg)
+	span.AddEvent("Product Found")
 	span.SetAttributes(
+		attribute.String("app.product.id", req.Id),
 		attribute.String("app.product.name", found.Name),
 	)
 	return found, nil

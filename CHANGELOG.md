@@ -7,6 +7,31 @@ the release.
 
 ## Unreleased
 
+* [chore] add GOMEMLIMIT to all Go services
+  ([#2148](https://github.com/open-telemetry/opentelemetry-demo/pull/2148))
+* [product-catalog] Simplify span event name
+  ([#2150](https://github.com/open-telemetry/opentelemetry-demo/pull/2150))
+* [cartservice] Refactor OpenFeature integration and add Dependency Injection support
+  ([#2160](https://github.com/open-telemetry/opentelemetry-demo/pull/2160))
+* [checkout]: change image from alpine to distroless to reduce size
+  ([#2161](https://github.com/open-telemetry/opentelemetry-demo/pull/2161))
+* [product-catalog]: change image from alpine to distroless to reduce size
+  ([#2161](https://github.com/open-telemetry/opentelemetry-demo/pull/2161))
+* [grafana] configure `traceToLogs` integration
+  ([#2162](https://github.com/open-telemetry/opentelemetry-demo/pull/2162))
+* [recommendation] change image from bookworm to alpine to reduce size
+  ([#2164](https://github.com/open-telemetry/opentelemetry-demo/pull/2164))
+* [fraud-detection] update distroless to debian12
+  ([#2170](https://github.com/open-telemetry/opentelemetry-demo/pull/2170))
+* [chore] bump dependent images
+  ([#2179](https://github.com/open-telemetry/opentelemetry-demo/pull/2179))
+* [email] bump ruby and dependencies to latest and switch to alpine
+  ([#2196](https://github.com/open-telemetry/opentelemetry-demo/pull/2196))
+* [cartservice] Upgrade OpenFeature version and change Hooks integration
+  ([#2199](https://github.com/open-telemetry/opentelemetry-demo/pull/2199))
+
+## 2.0.2
+
 * [frontend] Update OpenTelemetry Browser SDK initialization
   ([#2092](https://github.com/open-telemetry/opentelemetry-demo/pull/2092))
 * [quote] Updated open-telemetry/exporter-otlp to 1.2.1 which includes the
@@ -17,6 +42,8 @@ the release.
   ([#2114](https://github.com/open-telemetry/opentelemetry-demo/pull/2114))
 * [flagd-ui] increase memory to 100MB
   ([#2120](https://github.com/open-telemetry/opentelemetry-demo/pull/2120))
+* [cartservice] change custom metrics to use seconds
+  ([#2135](https://github.com/open-telemetry/opentelemetry-demo/pull/2135))
 
 ## 2.0.1
 
