@@ -503,7 +503,7 @@ services:
     build:
       context: ./
       dockerfile: ${QUOTE_DOCKERFILE}
-      no-cache: true
+      no_cache: true
     deploy:
       resources:
         limits:
