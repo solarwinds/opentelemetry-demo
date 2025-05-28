@@ -498,7 +498,7 @@ services:
 
   # Quote service
   quote:
-    image: ${IMAGE_NAME}:${DEMO_VERSION}-quote
+    image: quote
     container_name: quote
     build:
       context: ./
@@ -518,6 +518,10 @@ services:
       - OTEL_RESOURCE_ATTRIBUTES
       - OTEL_SERVICE_NAME=quote
       - OTEL_PHP_INTERNAL_METRICS_ENABLED=true
+      - OTEL_TRACES_SAMPLER=solarwinds_http
+      - SW_APM_COLLECTOR=${SW_APM_COLLECTOR}
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_KEY}
+      - OTEL_PROPAGATORS=baggage,tracecontext,swotracestate,xtraceoptions
     depends_on:
       otel-collector:
         condition: service_started
