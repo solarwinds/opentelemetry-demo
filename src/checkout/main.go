@@ -46,6 +46,7 @@ import (
 	pb "github.com/open-telemetry/opentelemetry-demo/src/checkout/genproto/oteldemo"
 	"github.com/open-telemetry/opentelemetry-demo/src/checkout/kafka"
 	"github.com/open-telemetry/opentelemetry-demo/src/checkout/money"
+	"github.com/solarwinds/apm-go/swo"
 )
 
 //go:generate go install google.golang.org/protobuf/cmd/protoc-gen-go
@@ -149,6 +150,14 @@ func main() {
 		}
 	}()
 
+	// Initialize the SolarWinds APM library
+	cb, err := swo.Start()
+	if err != nil {
+		// Handle error
+	}
+	// This function returned from 'Start()' will tell the apm library to
+	// shut down, often deferred until the end of 'main()'.
+	defer cb()
 	mp := initMeterProvider()
 	defer func() {
 		if err := mp.Shutdown(context.Background()); err != nil {
@@ -156,7 +165,7 @@ func main() {
 		}
 	}()
 
-	err := runtime.Start(runtime.WithMinimumReadMemStatsInterval(time.Second))
+	err = runtime.Start(runtime.WithMinimumReadMemStatsInterval(time.Second))
 	if err != nil {
 		log.Fatal(err)
 	}
