@@ -39,16 +39,11 @@ services:
     environment:
       - AD_PORT
       - FLAGD_HOST
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://${OTEL_COLLECTOR_HOST}:${OTEL_COLLECTOR_PORT_HTTP}
-      - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
-      - OTEL_RESOURCE_ATTRIBUTES
-      - OTEL_LOGS_EXPORTER=otlp
-      - OTEL_SERVICE_NAME=ad
+      - SW_APM_PROFILER_ENABLED=true
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:ad
+      - SW_APM_COLLECTOR           
       # Workaround on OSX for https://bugs.openjdk.org/browse/JDK-8345296
       - _JAVA_OPTIONS
-    depends_on:
-      otel-collector:
-        condition: service_started
     logging: *logging
 
   # Cart service
@@ -71,14 +66,15 @@ services:
       - CART_PORT
       - FLAGD_HOST
       - VALKEY_ADDR
-      - OTEL_EXPORTER_OTLP_ENDPOINT
-      - OTEL_RESOURCE_ATTRIBUTES
-      - OTEL_SERVICE_NAME=cart
+      - SW_APM_HOME_DOTNET=/usr/src/app/solarwinds
+      - CORECLR_PROFILER='{AAAA7777-11FE-4F94-8EDA-312C0EDF4141}'
+      - CORECLR_PROFILER_PATH=/usr/src/app/solarwinds/solarwinds_apm_profiler.so
+      - CORECLR_ENABLE_PROFILING=1      - ASPNETCORE_URLS=http://*:${CART_PORT}
       - ASPNETCORE_URLS=http://*:${CART_PORT}
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:cart
+      - SW_APM_COLLECTOR  
     depends_on:
       valkey-cart:
-        condition: service_started
-      otel-collector:
         condition: service_started
     logging: *logging
 
@@ -108,10 +104,8 @@ services:
       - PRODUCT_CATALOG_ADDR
       - SHIPPING_ADDR
       - GOMEMLIMIT=16MiB
-      - OTEL_EXPORTER_OTLP_ENDPOINT
-      - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
-      - OTEL_RESOURCE_ATTRIBUTES
-      - OTEL_SERVICE_NAME=checkout
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:checkout
+      - SW_APM_COLLECTOR           
     depends_on:
       cart:
         condition: service_started
@@ -124,8 +118,6 @@ services:
       product-catalog:
         condition: service_started
       shipping:
-        condition: service_started
-      otel-collector:
         condition: service_started
     logging: *logging
 
@@ -175,12 +167,8 @@ services:
     environment:
       - APP_ENV=production
       - EMAIL_PORT
-      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://${OTEL_COLLECTOR_HOST}:${OTEL_COLLECTOR_PORT_HTTP}/v1/traces
-      - OTEL_RESOURCE_ATTRIBUTES
-      - OTEL_SERVICE_NAME=email
-    depends_on:
-      otel-collector:
-        condition: service_started
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:email
+      - SW_APM_COLLECTOR
     logging: *logging
 
   # Frontend
@@ -209,16 +197,15 @@ services:
       - PRODUCT_CATALOG_ADDR
       - RECOMMENDATION_ADDR
       - SHIPPING_ADDR
-      - OTEL_EXPORTER_OTLP_ENDPOINT
-      - OTEL_RESOURCE_ATTRIBUTES=${OTEL_RESOURCE_ATTRIBUTES}
       - ENV_PLATFORM
-      - OTEL_SERVICE_NAME=frontend
       - PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
       - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
       - WEB_OTEL_SERVICE_NAME=frontend-web
       - OTEL_COLLECTOR_HOST
       - FLAGD_HOST
       - FLAGD_PORT
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:frontend
+      - SW_APM_COLLECTOR  
     depends_on:
       ad:
         condition: service_started
@@ -373,13 +360,8 @@ services:
     environment:
       - FLAGD_HOST
       - PAYMENT_PORT
-      - OTEL_EXPORTER_OTLP_ENDPOINT
-      - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
-      - OTEL_RESOURCE_ATTRIBUTES
-      - OTEL_SERVICE_NAME=payment
-    depends_on:
-      otel-collector:
-        condition: service_started
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:payment
+      - SW_APM_COLLECTOR
     logging: *logging
 
   # Product Catalog service
@@ -403,15 +385,10 @@ services:
       - PRODUCT_CATALOG_PORT
       - PRODUCT_CATALOG_RELOAD_INTERVAL
       - GOMEMLIMIT=16MiB
-      - OTEL_EXPORTER_OTLP_ENDPOINT
-      - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
-      - OTEL_RESOURCE_ATTRIBUTES
-      - OTEL_SERVICE_NAME=product-catalog
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:product-catalog
+      - SW_APM_COLLECTOR      
     volumes:
       - ./src/product-catalog/products:/usr/src/app/products
-    depends_on:
-      otel-collector:
-        condition: service_started
     logging: *logging
 
   # Quote service
@@ -431,15 +408,9 @@ services:
     ports:
       - "${QUOTE_PORT}"
     environment:
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://${OTEL_COLLECTOR_HOST}:${OTEL_COLLECTOR_PORT_HTTP}
-      - OTEL_PHP_AUTOLOAD_ENABLED=true
       - QUOTE_PORT
-      - OTEL_RESOURCE_ATTRIBUTES
-      - OTEL_SERVICE_NAME=quote
-      - OTEL_PHP_INTERNAL_METRICS_ENABLED=true
-    depends_on:
-      otel-collector:
-        condition: service_started
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:quote
+      - SW_APM_COLLECTOR
     logging: *logging
 
   # Recommendation service
@@ -462,16 +433,11 @@ services:
       - FLAGD_HOST
       - RECOMMENDATION_PORT
       - PRODUCT_CATALOG_ADDR
-      - OTEL_PYTHON_LOG_CORRELATION=true
-      - OTEL_EXPORTER_OTLP_ENDPOINT
-      - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
-      - OTEL_RESOURCE_ATTRIBUTES
-      - OTEL_SERVICE_NAME=recommendation
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:recommendation
+      - SW_APM_COLLECTOR           
       - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
     depends_on:
       product-catalog:
-        condition: service_started
-      otel-collector:
         condition: service_started
     logging: *logging
 
@@ -622,6 +588,8 @@ services:
       - OTEL_COLLECTOR_PORT_GRPC
       - OTEL_COLLECTOR_PORT_HTTP
       - GOMEMLIMIT=160MiB
+      - SW_OTEL_ADDRESS
+      - SW_APM_SERVICE_TOKEN
 
   # Prometheus
   prometheus:
