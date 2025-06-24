@@ -8,7 +8,7 @@ import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { getWebAutoInstrumentations } from '@opentelemetry/auto-instrumentations-web';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { browserDetector } from '@opentelemetry/opentelemetry-browser-detector';
-import { SEMRESATTRS_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
+import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { SessionIdProcessor } from './SessionIdProcessor';
 import { detectResources } from '@opentelemetry/resources/build/src/detect-resources';
@@ -23,7 +23,7 @@ const FrontendTracer = async () => {
   const { ZoneContextManager } = await import('@opentelemetry/context-zone');
 
   let resource = resourceFromAttributes({
-    [SEMRESATTRS_SERVICE_NAME]: NEXT_PUBLIC_OTEL_SERVICE_NAME,
+    [ATTR_SERVICE_NAME]: NEXT_PUBLIC_OTEL_SERVICE_NAME,
   });
   const detectedResources = detectResources({ detectors: [browserDetector] });
   resource = resource.merge(detectedResources);
