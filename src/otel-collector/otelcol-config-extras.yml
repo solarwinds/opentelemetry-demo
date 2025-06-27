@@ -16,3 +16,29 @@
 #    pipelines:
 #      traces:
 #        exporters: [spanmetrics, otlphttp/example]
+   exporters:
+      otlphttp/swo:
+        endpoint: ${env:SW_OTEL_ADDRESS}
+        headers:
+          Authorization: Bearer ${env:SW_APM_SERVICE_TOKEN}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 10s
+          max_elapsed_time: 300s
+          max_interval: 30s
+        sending_queue:
+          enabled: true
+          num_consumers: 10
+          queue_size: 1000
+        timeout: 15s
+        tls:
+          insecure: false
+  
+   service:
+     pipelines:
+       traces:
+         exporters: [otlphttp/swo]
+       metrics:
+         exporters: [otlphttp/swo]
+       logs:
+         exporters: [otlphttp/swo]

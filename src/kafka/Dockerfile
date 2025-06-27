@@ -1,7 +1,6 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-
 FROM apache/kafka:3.7.0
 
 USER root
@@ -9,7 +8,9 @@ ARG OTEL_JAVA_AGENT_VERSION
 
 USER appuser
 
-ADD --chown=appuser:appuser https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v$OTEL_JAVA_AGENT_VERSION/opentelemetry-javaagent.jar /tmp/opentelemetry-javaagent.jar
+ADD --chmod=644 https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/0.19.0/jmx_prometheus_javaagent-0.19.0.jar /tmp/jmx_prometheus_javaagent-0.19.0.jar
+
+COPY ./src/kafka/jmx-kafka-config.yml /tmp/jmx-kafka-config.yml
 
 ENV KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
 ENV KAFKA_CONTROLLER_QUORUM_VOTERS='1@0.0.0.0:9093'
@@ -24,5 +25,5 @@ ENV KAFKA_METADATA_LOG_MAX_RECORD_BYTES_BETWEEN_SNAPSHOTS=2800
 ENV KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
 ENV KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
 ENV KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
-ENV KAFKA_OPTS="-javaagent:/tmp/opentelemetry-javaagent.jar -Dotel.jmx.target.system=kafka-broker"
+ENV EXTRA_ARGS="-javaagent:/tmp/jmx_prometheus_javaagent-0.19.0.jar=9000:/tmp/jmx-kafka-config.yml"
 ENV CLUSTER_ID=ckjPoprWQzOf0-FuNkGfFQ

@@ -46,6 +46,7 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
+	"github.com/solarwinds/apm-go/swo"
 )
 
 var (
@@ -113,6 +114,7 @@ func initMeterProvider() *sdkmetric.MeterProvider {
 }
 
 func main() {
+	/*
 	tp := initTracerProvider()
 	defer func() {
 		if err := tp.Shutdown(context.Background()); err != nil {
@@ -120,7 +122,17 @@ func main() {
 		}
 		log.Println("Shutdown tracer provider")
 	}()
-
+	*/
+	// Initialize the SolarWinds APM library
+	cb, err := swo.Start()
+	if err != nil {
+		log.Error(err)
+	}
+	// This function returned from 'Start()' will tell the apm library to
+	// shut down, often deferred until the end of 'main()'.
+	defer cb()
+	
+	/*
 	mp := initMeterProvider()
 	defer func() {
 		if err := mp.Shutdown(context.Background()); err != nil {
@@ -128,8 +140,9 @@ func main() {
 		}
 		log.Println("Shutdown meter provider")
 	}()
+	*/
 	openfeature.AddHooks(otelhooks.NewTracesHook())
-	err := openfeature.SetProvider(flagd.NewProvider())
+	err = openfeature.SetProvider(flagd.NewProvider())
 	if err != nil {
 		log.Fatal(err)
 	}
