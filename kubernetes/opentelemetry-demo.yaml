@@ -489,7 +489,7 @@ data:
   SW_APM_COLLECTOR: apm.collector.na-01.cloud.solarwinds.com
   SWO_RUM_SCRIPT: ""
   SWO_URL: na-01.cloud.solarwinds.com
-  UI_EXTERNAL_URL: "http://frontend-proxy:8080"
+  UI_EXTERNAL_URL: http://frontend-proxy:8080
   UPSTREAM_DISTRO_DISABLED: "true"
 kind: ConfigMap
 metadata:
@@ -2059,7 +2059,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.0.2-payment
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.0.2-quote
         imagePullPolicy: IfNotPresent
         name: quote
         ports:
