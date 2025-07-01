@@ -6,12 +6,11 @@ import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { getWebAutoInstrumentations } from '@opentelemetry/auto-instrumentations-web';
-import { resourceFromAttributes } from '@opentelemetry/resources';
+import { resourceFromAttributes, detectResources } from '@opentelemetry/resources';
 import { browserDetector } from '@opentelemetry/opentelemetry-browser-detector';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { SessionIdProcessor } from './SessionIdProcessor';
-import { detectResources } from '@opentelemetry/resources/build/src/detect-resources';
 
 const {
   NEXT_PUBLIC_OTEL_SERVICE_NAME = '',
