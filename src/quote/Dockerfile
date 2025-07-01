@@ -22,7 +22,6 @@ RUN curl -sS -o /usr/local/bin/solarwinds-apm-php.sh \
 RUN bash /usr/local/bin/solarwinds-apm-php.sh \
     --service-key="00000000-0000-0000-0000-000000000000:astronomyshop-quote"
 
-RUN echo "\nsolarwinds-apm.debug_level = 6" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
 RUN echo "\nsolarwinds-apm.enable_cli = 1" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
 RUN echo "\nsolarwinds-apm.use_custom_start_trace = 1" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
 RUN echo "\nsolarwinds-apm.enable_profiling = 1" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
