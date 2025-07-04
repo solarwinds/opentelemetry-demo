@@ -26,6 +26,7 @@ function calculateQuote($jsonObject): float
             throw new \InvalidArgumentException('numberOfItems not provided');
         }
         $numberOfItems = intval($jsonObject['numberOfItems']);
+		solarwinds_apm_log('calculateQuote', 'info', array('number_of_items' => $numberOfItems));
         $costPerItem = rand(400, 1000)/10;
         $quote = round($costPerItem * $numberOfItems, 2);
 
@@ -42,6 +43,7 @@ function calculateQuote($jsonObject): float
         $counter->add(1, ['number_of_items' => $numberOfItems]);
     } catch (\Exception $exception) {
         $childSpan->recordException($exception);
+        solarwinds_apm_log_error('calculateQuote', $exception->getMessage(), E_ERROR);
     } finally {
         $childSpan->end();
         return $quote;
@@ -53,9 +55,16 @@ return function (App $app) {
         $span = Span::getCurrent();
         $span->addEvent('Received get quote request, processing it');
 
+        // Start a SolarWinds APM trace for this request
+        // This is a custom function that integrates with SolarWinds APM
+        solarwinds_apm_start_trace('GetQuote');
+        solarwinds_apm_set_transaction_name('oteldemo.quoteservice/GetQuote');
+
         $jsonObject = $request->getParsedBody();
 
+        solarwinds_apm_log_entry('calculateQuote');
         $data = calculateQuote($jsonObject);
+        solarwinds_apm_log_exit('calculateQuote');
 
         $payload = json_encode($data);
         $response->getBody()->write($payload);
@@ -67,7 +76,9 @@ return function (App $app) {
         $logger->info('Calculated quote', [
             'total' => $data,
         ]);
-
+ 
+        solarwinds_apm_end_trace();
+        
         return $response
             ->withHeader('Content-Type', 'application/json');
     });

@@ -5,9 +5,7 @@ require "ostruct"
 require "pony"
 require "sinatra"
 
-require "opentelemetry/sdk"
-require "opentelemetry/exporter/otlp"
-require "opentelemetry/instrumentation/sinatra"
+require "solarwinds_apm"
 
 set :port, ENV["EMAIL_PORT"]
 

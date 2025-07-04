@@ -9,9 +9,13 @@ COPY ./src/email/Gemfile.lock Gemfile.lock
 
 RUN apk update && \
     apk add make gcc musl-dev gcompat && \
+    apk add ruby-dev g++ make && \
     bundle install
 
 FROM ruby:3.4.4-alpine3.21
+
+RUN apk update && \
+    apk add ruby-dev g++ make
 
 COPY --from=builder /usr/local/bundle/ /usr/local/bundle/
 

@@ -46,13 +46,13 @@ services:
 
   # AdService
   ad:
-    image: ${IMAGE_NAME}:${DEMO_VERSION}-ad
+    image: ${SWO_DEMO_IMAGE_NAME}:${DEMO_VERSION}-ad
     container_name: ad
     build:
       context: ./
       dockerfile: ${AD_DOCKERFILE}
       cache_from:
-        - ${IMAGE_NAME}:${IMAGE_VERSION}-ad
+        - ${SWO_DEMO_IMAGE_NAME}:${IMAGE_VERSION}-ad
       args:
         OTEL_JAVA_AGENT_VERSION: ${OTEL_JAVA_AGENT_VERSION}
     deploy:
@@ -66,29 +66,25 @@ services:
       - AD_PORT
       - FLAGD_HOST
       - FLAGD_PORT
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://${OTEL_COLLECTOR_HOST}:${OTEL_COLLECTOR_PORT_HTTP}
-      - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
-      - OTEL_RESOURCE_ATTRIBUTES
-      - OTEL_LOGS_EXPORTER=otlp
-      - OTEL_SERVICE_NAME=ad
+      - SW_APM_PROFILER_ENABLED=true
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:ad
+      - SW_APM_COLLECTOR           
       # Workaround on OSX for https://bugs.openjdk.org/browse/JDK-8345296
       - _JAVA_OPTIONS
     depends_on:
-      otel-collector:
-        condition: service_started
       flagd:
         condition: service_started
     logging: *logging
 
   # Cart service
   cart:
-    image: ${IMAGE_NAME}:${DEMO_VERSION}-cart
+    image: ${SWO_DEMO_IMAGE_NAME}:${DEMO_VERSION}-cart
     container_name: cart
     build:
       context: ./
       dockerfile: ${CART_DOCKERFILE}
       cache_from:
-        - ${IMAGE_NAME}:${IMAGE_VERSION}-cart
+        - ${SWO_DEMO_IMAGE_NAME}:${IMAGE_VERSION}-cart
     deploy:
       resources:
         limits:
@@ -101,14 +97,15 @@ services:
       - FLAGD_HOST
       - FLAGD_PORT
       - VALKEY_ADDR
-      - OTEL_EXPORTER_OTLP_ENDPOINT
-      - OTEL_RESOURCE_ATTRIBUTES
-      - OTEL_SERVICE_NAME=cart
+      - SW_APM_HOME_DOTNET=/usr/src/app/solarwinds
+      - CORECLR_PROFILER='{AAAA7777-11FE-4F94-8EDA-312C0EDF4141}'
+      - CORECLR_PROFILER_PATH=/usr/src/app/solarwinds/solarwinds_apm_profiler.so
+      - CORECLR_ENABLE_PROFILING=1
       - ASPNETCORE_URLS=http://*:${CART_PORT}
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:cart
+      - SW_APM_COLLECTOR      
     depends_on:
       valkey-cart:
-        condition: service_started
-      otel-collector:
         condition: service_started
       flagd:
         condition: service_started
@@ -116,13 +113,13 @@ services:
 
   # Checkout service
   checkout:
-    image: ${IMAGE_NAME}:${DEMO_VERSION}-checkout
+    image: ${SWO_DEMO_IMAGE_NAME}:${DEMO_VERSION}-checkout
     container_name: checkout
     build:
       context: ./
       dockerfile: ${CHECKOUT_DOCKERFILE}
       cache_from:
-        - ${IMAGE_NAME}:${IMAGE_VERSION}-checkout
+        - ${SWO_DEMO_IMAGE_NAME}:${IMAGE_VERSION}-checkout
     deploy:
       resources:
         limits:
@@ -142,10 +139,8 @@ services:
       - SHIPPING_ADDR
       - KAFKA_ADDR
       - GOMEMLIMIT=16MiB
-      - OTEL_EXPORTER_OTLP_ENDPOINT
-      - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
-      - OTEL_RESOURCE_ATTRIBUTES
-      - OTEL_SERVICE_NAME=checkout
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:checkout
+      - SW_APM_COLLECTOR           
     depends_on:
       cart:
         condition: service_started
@@ -158,8 +153,6 @@ services:
       product-catalog:
         condition: service_started
       shipping:
-        condition: service_started
-      otel-collector:
         condition: service_started
       kafka:
         condition: service_healthy
@@ -197,13 +190,13 @@ services:
 
   # Email service
   email:
-    image: ${IMAGE_NAME}:${DEMO_VERSION}-email
+    image: ${SWO_DEMO_IMAGE_NAME}:${DEMO_VERSION}-email
     container_name: email
     build:
       context: ./
       dockerfile: ${EMAIL_DOCKERFILE}
       cache_from:
-        - ${IMAGE_NAME}:${IMAGE_VERSION}-email
+        - ${SWO_DEMO_IMAGE_NAME}:${IMAGE_VERSION}-email
     deploy:
       resources:
         limits:
@@ -214,23 +207,19 @@ services:
     environment:
       - APP_ENV=production
       - EMAIL_PORT
-      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://${OTEL_COLLECTOR_HOST}:${OTEL_COLLECTOR_PORT_HTTP}/v1/traces
-      - OTEL_RESOURCE_ATTRIBUTES
-      - OTEL_SERVICE_NAME=email
-    depends_on:
-      otel-collector:
-        condition: service_started
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:email
+      - SW_APM_COLLECTOR
     logging: *logging
 
   # Fraud Detection service
   fraud-detection:
-    image: ${IMAGE_NAME}:${DEMO_VERSION}-fraud-detection
+    image: ${SWO_DEMO_IMAGE_NAME}:${DEMO_VERSION}-fraud-detection
     container_name: fraud-detection
     build:
       context: ./
       dockerfile: ${FRAUD_DOCKERFILE}
       cache_from:
-        - ${IMAGE_NAME}:${IMAGE_VERSION}-fraud-detection
+        - ${SWO_DEMO_IMAGE_NAME}:${IMAGE_VERSION}-fraud-detection
       args:
         OTEL_JAVA_AGENT_VERSION: ${OTEL_JAVA_AGENT_VERSION}
     deploy:
@@ -242,12 +231,11 @@ services:
       - FLAGD_HOST
       - FLAGD_PORT
       - KAFKA_ADDR
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://${OTEL_COLLECTOR_HOST}:${OTEL_COLLECTOR_PORT_HTTP}
       - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
       - OTEL_INSTRUMENTATION_KAFKA_EXPERIMENTAL_SPAN_ATTRIBUTES=true
       - OTEL_INSTRUMENTATION_MESSAGING_EXPERIMENTAL_RECEIVE_TELEMETRY_ENABLED=true
-      - OTEL_RESOURCE_ATTRIBUTES
-      - OTEL_SERVICE_NAME=fraud-detection
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:fraud-detection
+      - SW_APM_COLLECTOR           
     depends_on:
       otel-collector:
         condition: service_started
@@ -257,13 +245,13 @@ services:
 
   # Frontend
   frontend:
-    image: ${IMAGE_NAME}:${DEMO_VERSION}-frontend
+    image: ${SWO_DEMO_IMAGE_NAME}:${DEMO_VERSION}-frontend
     container_name: frontend
     build:
       context: ./
       dockerfile: ${FRONTEND_DOCKERFILE}
       cache_from:
-        - ${IMAGE_NAME}:${IMAGE_VERSION}-frontend
+        - ${SWO_DEMO_IMAGE_NAME}:${IMAGE_VERSION}-frontend
     deploy:
       resources:
         limits:
@@ -281,16 +269,15 @@ services:
       - PRODUCT_CATALOG_ADDR
       - RECOMMENDATION_ADDR
       - SHIPPING_ADDR
-      - OTEL_EXPORTER_OTLP_ENDPOINT
-      - OTEL_RESOURCE_ATTRIBUTES=${OTEL_RESOURCE_ATTRIBUTES}
       - ENV_PLATFORM
-      - OTEL_SERVICE_NAME=frontend
       - PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
       - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
       - WEB_OTEL_SERVICE_NAME=frontend-web
       - OTEL_COLLECTOR_HOST
       - FLAGD_HOST
       - FLAGD_PORT
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:frontend
+      - SW_APM_COLLECTOR           
     depends_on:
       ad:
         condition: service_started
@@ -367,13 +354,13 @@ services:
 
   # image-provider
   image-provider:
-    image: ${IMAGE_NAME}:${DEMO_VERSION}-image-provider
+    image: ${SWO_DEMO_IMAGE_NAME}:${DEMO_VERSION}-image-provider
     container_name: image-provider
     build:
       context: ./
       dockerfile: ${IMAGE_PROVIDER_DOCKERFILE}
       cache_from:
-        - ${IMAGE_NAME}:${IMAGE_VERSION}-image-provider
+        - ${SWO_DEMO_IMAGE_NAME}:${IMAGE_VERSION}-image-provider
     deploy:
       resources:
         limits:
@@ -432,13 +419,13 @@ services:
 
   # Payment service
   payment:
-    image: ${IMAGE_NAME}:${DEMO_VERSION}-payment
+    image: ${SWO_DEMO_IMAGE_NAME}:${DEMO_VERSION}-payment
     container_name: payment
     build:
       context: ./
       dockerfile: ${PAYMENT_DOCKERFILE}
       cache_from:
-        - ${IMAGE_NAME}:${IMAGE_VERSION}-payment
+        - ${SWO_DEMO_IMAGE_NAME}:${IMAGE_VERSION}-payment
     deploy:
       resources:
         limits:
@@ -450,26 +437,22 @@ services:
       - PAYMENT_PORT
       - FLAGD_HOST
       - FLAGD_PORT
-      - OTEL_EXPORTER_OTLP_ENDPOINT
-      - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
-      - OTEL_RESOURCE_ATTRIBUTES
-      - OTEL_SERVICE_NAME=payment
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:payment
+      - SW_APM_COLLECTOR
     depends_on:
-      otel-collector:
-        condition: service_started
       flagd:
         condition: service_started
     logging: *logging
 
   # Product Catalog service
   product-catalog:
-    image: ${IMAGE_NAME}:${DEMO_VERSION}-product-catalog
+    image: ${SWO_DEMO_IMAGE_NAME}:${DEMO_VERSION}-product-catalog
     container_name: product-catalog
     build:
       context: ./
       dockerfile: ${PRODUCT_CATALOG_DOCKERFILE}
       cache_from:
-        - ${IMAGE_NAME}:${IMAGE_VERSION}-product-catalog
+        - ${SWO_DEMO_IMAGE_NAME}:${IMAGE_VERSION}-product-catalog
     deploy:
       resources:
         limits:
@@ -483,28 +466,24 @@ services:
       - FLAGD_HOST
       - FLAGD_PORT
       - GOMEMLIMIT=16MiB
-      - OTEL_EXPORTER_OTLP_ENDPOINT
-      - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
-      - OTEL_RESOURCE_ATTRIBUTES
-      - OTEL_SERVICE_NAME=product-catalog
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:product-catalog
+      - SW_APM_COLLECTOR      
     volumes:
       - ./src/product-catalog/products:/usr/src/app/products
     depends_on:
-      otel-collector:
-        condition: service_started
       flagd:
         condition: service_started
     logging: *logging
 
   # Quote service
   quote:
-    image: ${IMAGE_NAME}:${DEMO_VERSION}-quote
+    image: ${SWO_DEMO_IMAGE_NAME}:${DEMO_VERSION}-quote
     container_name: quote
     build:
       context: ./
       dockerfile: ${QUOTE_DOCKERFILE}
       cache_from:
-        - ${IMAGE_NAME}:${IMAGE_VERSION}-quote
+        - ${SWO_DEMO_IMAGE_NAME}:${IMAGE_VERSION}-quote
     deploy:
       resources:
         limits:
@@ -513,26 +492,20 @@ services:
     ports:
       - "${QUOTE_PORT}"
     environment:
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://${OTEL_COLLECTOR_HOST}:${OTEL_COLLECTOR_PORT_HTTP}
-      - OTEL_PHP_AUTOLOAD_ENABLED=true
       - QUOTE_PORT
-      - OTEL_RESOURCE_ATTRIBUTES
-      - OTEL_SERVICE_NAME=quote
-      - OTEL_PHP_INTERNAL_METRICS_ENABLED=true
-    depends_on:
-      otel-collector:
-        condition: service_started
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:quote
+      - SW_APM_COLLECTOR       
     logging: *logging
 
   # Recommendation service
   recommendation:
-    image: ${IMAGE_NAME}:${DEMO_VERSION}-recommendation
+    image: ${SWO_DEMO_IMAGE_NAME}:${DEMO_VERSION}-recommendation
     container_name: recommendation
     build:
       context: ./
       dockerfile: ${RECOMMENDATION_DOCKERFILE}
       cache_from:
-        - ${IMAGE_NAME}:${IMAGE_VERSION}-recommendation
+        - ${SWO_DEMO_IMAGE_NAME}:${IMAGE_VERSION}-recommendation
     deploy:
       resources:
         limits:
@@ -545,16 +518,12 @@ services:
       - PRODUCT_CATALOG_ADDR
       - FLAGD_HOST
       - FLAGD_PORT
-      - OTEL_PYTHON_LOG_CORRELATION=true
-      - OTEL_EXPORTER_OTLP_ENDPOINT
-      - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
-      - OTEL_RESOURCE_ATTRIBUTES
-      - OTEL_SERVICE_NAME=recommendation
       - PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+      - OTEL_SERVICE_NAME=recommendation
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:recommendation
+      - SW_APM_COLLECTOR           
     depends_on:
       product-catalog:
-        condition: service_started
-      otel-collector:
         condition: service_started
       flagd:
         condition: service_started
@@ -647,13 +616,13 @@ services:
 
   # Kafka used by Checkout, Accounting, and Fraud Detection services
   kafka:
-    image: ${IMAGE_NAME}:${DEMO_VERSION}-kafka
+    image: ${SWO_DEMO_IMAGE_NAME}:${DEMO_VERSION}-kafka
     container_name: kafka
     build:
       context: ./
       dockerfile: ${KAFKA_DOCKERFILE}
       cache_from:
-        - ${IMAGE_NAME}:${IMAGE_VERSION}-kafka
+        - ${SWO_DEMO_IMAGE_NAME}:${IMAGE_VERSION}-kafka
       args:
         OTEL_JAVA_AGENT_VERSION: ${OTEL_JAVA_AGENT_VERSION}
     deploy:
@@ -768,6 +737,8 @@ services:
       - OTEL_COLLECTOR_PORT_GRPC
       - OTEL_COLLECTOR_PORT_HTTP
       - GOMEMLIMIT=160MiB
+      - SW_OTEL_ADDRESS
+      - SW_APM_SERVICE_TOKEN
 
   # Prometheus
   prometheus:
