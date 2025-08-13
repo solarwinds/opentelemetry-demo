@@ -35,6 +35,16 @@ FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-alpine3.20
 WORKDIR /usr/src/app/
 COPY --from=builder /cart/ ./
 
+# add solarwinds apm agent
+RUN mkdir -p /usr/src/app/solarwinds
+WORKDIR /usr/src/app/solarwinds
+RUN apk update && apk --no-cache add curl
+RUN curl -sSO https://agent-binaries.cloud.solarwinds.com/apm/dotnet/latest/solarwinds-apm-dotnet-agent-package.alpine.x86_64.tgz
+RUN tar -xvf solarwinds-apm-dotnet-agent-package.alpine.x86_64.tgz
+RUN rm solarwinds-apm-dotnet-agent-package.alpine.x86_64.tgz
+COPY ./src/cart/solarwinds_apm.config ./
+WORKDIR /usr/src/app/
+
 ENV DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE=false
 
 EXPOSE ${CART_PORT}
