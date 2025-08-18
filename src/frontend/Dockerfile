@@ -59,4 +59,4 @@ COPY ./src/frontend/utils/telemetry/Instrumentation.js Instrumentation.js
 
 EXPOSE ${PORT}
 
-CMD ["--require=./Instrumentation.js", "server.js"]
+ENTRYPOINT ["npm", "start"]
