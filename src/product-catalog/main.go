@@ -153,7 +153,7 @@ func main() {
 	// Initialize the SolarWinds APM library
 	cb, err := swo.Start()
 	if err != nil {
-		log.Error(err)
+		logger.Error(fmt.Sprintf("Error initializing SWO APM library: %v", err))
 	}
 	// This function returned from 'Start()' will tell the apm library to
 	// shut down, often deferred until the end of 'main()'.
