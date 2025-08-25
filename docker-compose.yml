@@ -19,13 +19,13 @@ services:
   # ******************
   # Accounting service
   accounting:
-    image: ${IMAGE_NAME}:${DEMO_VERSION}-accounting
+    image: ${SWO_DEMO_IMAGE_NAME}:${DEMO_VERSION}-accounting
     container_name: accounting
     build:
       context: ./
       dockerfile: ${ACCOUNTING_DOCKERFILE}
       cache_from:
-        - ${IMAGE_NAME}:${IMAGE_VERSION}-accounting
+        - ${SWO_DEMO_IMAGE_NAME}:${IMAGE_VERSION}-accounting
     deploy:
       resources:
         limits:
@@ -33,12 +33,12 @@ services:
     restart: unless-stopped
     environment:
       - KAFKA_ADDR
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://${OTEL_COLLECTOR_HOST}:${OTEL_COLLECTOR_PORT_HTTP}
       - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
-      - OTEL_RESOURCE_ATTRIBUTES
-      - OTEL_SERVICE_NAME=accounting
       - DB_CONNECTION_STRING=Host=postgresql;Username=otelu;Password=otelp;Database=otel
-      - OTEL_DOTNET_AUTO_TRACES_ENTITYFRAMEWORKCORE_INSTRUMENTATION_ENABLED=false
+      - SW_APM_OPEN_TELEMETRY=Enabled
+      - SW_APM_SERVICE_KEY=${SW_APM_SERVICE_TOKEN}:accounting
+      - SW_APM_COLLECTOR         
+      - OTEL_DOTNET_AUTO_TRACES_KAFKA_INSTRUMENTATION_ENABLED=true
     depends_on:
       otel-collector:
         condition: service_started

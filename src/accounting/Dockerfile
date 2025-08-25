@@ -27,9 +27,6 @@ WORKDIR /app
 COPY --from=publish /app/publish .
 
 USER root
-RUN mkdir -p "/var/log/opentelemetry/dotnet"
-RUN chown app "/var/log/opentelemetry/dotnet"
-RUN chown app "/app/instrument.sh"
 
 # add solarwinds apm agent
 RUN apt-get update && apt-get install -y curl
@@ -44,7 +41,6 @@ RUN curl -sSO https://agent-binaries.cloud.solarwinds.com/apm/dotnet/latest/sola
 ENV CORECLR_PROFILER={AAAA7777-11FE-4F94-8EDA-312C0EDF4141}
 ENV CORECLR_PROFILER_PATH=${SW_APM_HOME_DOTNET}/solarwinds_apm_profiler.so
 ENV CORECLR_ENABLE_PROFILING=1
-
 
 USER app
 ENV OTEL_DOTNET_AUTO_TRACES_ADDITIONAL_SOURCES=Accounting.Consumer
