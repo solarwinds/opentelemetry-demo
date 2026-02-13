@@ -51,6 +51,8 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/XSAM/otelsql"
+
+	"github.com/solarwinds/apm-go/swo"
 )
 
 type productCatalog struct {
@@ -174,22 +176,33 @@ func main() {
 		}
 		logger.Info("Shutdown logger provider")
 	}()
+	/*
+		tp := initTracerProvider()
+		defer func() {
+			if err := tp.Shutdown(context.Background()); err != nil {
+				logger.Error(fmt.Sprintf("Tracer Provider Shutdown: %v", err))
+			}
+			logger.Info("Shutdown tracer provider")
+		}()
+	*/
+	// Initialize the SolarWinds APM library
+	cb, err := swo.Start()
+	if err != nil {
+		logger.Error(fmt.Sprintf("Error initializing SWO APM library: %v", err))
+	}
+	// This function returned from 'Start()' will tell the apm library to
+	// shut down, often deferred until the end of 'main()'.
+	defer cb()
 
-	tp := initTracerProvider()
-	defer func() {
-		if err := tp.Shutdown(context.Background()); err != nil {
-			logger.Error(fmt.Sprintf("Tracer Provider Shutdown: %v", err))
-		}
-		logger.Info("Shutdown tracer provider")
-	}()
-
-	mp := initMeterProvider()
-	defer func() {
-		if err := mp.Shutdown(context.Background()); err != nil {
-			logger.Error(fmt.Sprintf("Error shutting down meter provider: %v", err))
-		}
-		logger.Info("Shutdown meter provider")
-	}()
+	/*
+		mp := initMeterProvider()
+		defer func() {
+			if err := mp.Shutdown(context.Background()); err != nil {
+				logger.Error(fmt.Sprintf("Error shutting down meter provider: %v", err))
+			}
+			logger.Info("Shutdown meter provider")
+		}()
+	*/
 
 	// Initialize database connection
 	if err := initDatabase(); err != nil {

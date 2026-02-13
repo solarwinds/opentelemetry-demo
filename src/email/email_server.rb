@@ -7,13 +7,7 @@ require "sinatra"
 require "open_feature/sdk"
 require "openfeature/flagd/provider"
 
-require "opentelemetry/sdk"
-require "opentelemetry-logs-sdk"
-require "opentelemetry-metrics-sdk"
-require "opentelemetry/exporter/otlp"
-require "opentelemetry-exporter-otlp-logs"
-require "opentelemetry-exporter-otlp-metrics"
-require "opentelemetry/instrumentation/sinatra"
+require "solarwinds_apm"
 
 set :port, ENV["EMAIL_PORT"]
 

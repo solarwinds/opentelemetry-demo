@@ -5,9 +5,9 @@ import Document, { DocumentContext, Html, Head, Main, NextScript } from 'next/do
 import { ServerStyleSheet } from 'styled-components';
 import {context, propagation} from "@opentelemetry/api";
 
-const { ENV_PLATFORM, WEB_OTEL_SERVICE_NAME, PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, OTEL_COLLECTOR_HOST} = process.env;
+const { ENV_PLATFORM, WEB_OTEL_SERVICE_NAME, PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, OTEL_COLLECTOR_HOST, SWO_RUM_SCRIPT} = process.env;
 
-export default class MyDocument extends Document<{ envString: string }> {
+export default class MyDocument extends Document<{ envString: string, rumScript: string }> {
   static async getInitialProps(ctx: DocumentContext) {
     const sheet = new ServerStyleSheet();
     const originalRenderPage = ctx.renderPage;
@@ -22,9 +22,8 @@ export default class MyDocument extends Document<{ envString: string }> {
       const baggage = propagation.getBaggage(context.active());
       const isSyntheticRequest = baggage?.getEntry('synthetic_request')?.value === 'true';
 
-      const otlpTracesEndpoint = isSyntheticRequest
-          ? `http://${OTEL_COLLECTOR_HOST}:4318/v1/traces`
-          : PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT;
+      const otlpTracesEndpoint = PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT == "" ? `http://${OTEL_COLLECTOR_HOST}:4317/v1/traces` : PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT;
+      const rumScript = SWO_RUM_SCRIPT;
 
       const envString = `
         window.ENV = {
@@ -37,6 +36,7 @@ export default class MyDocument extends Document<{ envString: string }> {
         ...initialProps,
         styles: [initialProps.styles, sheet.getStyleElement()],
         envString,
+        rumScript
       };
     } finally {
       sheet.seal();
@@ -58,6 +58,7 @@ export default class MyDocument extends Document<{ envString: string }> {
           <Main />
           <script dangerouslySetInnerHTML={{ __html: this.props.envString }}></script>
           <NextScript />
+          <script  src={ this.props.rumScript } async></script>
         </body>
       </Html>
     );

@@ -57,4 +57,4 @@ COPY ./src/frontend/utils/telemetry/Instrumentation.js Instrumentation.js
 
 EXPOSE ${FRONTEND_PORT}
 
-CMD ["--require=./Instrumentation.js", "server.js"]
+ENTRYPOINT ["/nodejs/bin/node", "--import", "solarwinds-apm", "server.js"]

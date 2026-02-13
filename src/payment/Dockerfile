@@ -28,4 +28,4 @@ COPY ./src/payment/opentelemetry.js opentelemetry.js
 
 EXPOSE ${PAYMENT_PORT}
 
-CMD ["--require=./opentelemetry.js", "index.js"]
+ENTRYPOINT ["/nodejs/bin/node", "--import", "solarwinds-apm", "index.js"]
