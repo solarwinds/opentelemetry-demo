@@ -38,7 +38,7 @@
     "@opentelemetry/sdk-trace-web": "2.2.0",
     "@tanstack/react-query": "5.90.16",
     "cookies-next": "6.1.1",
-    "solarwinds-apm": "15.5.0",
+    "solarwinds-apm": "16.1.0",
     "currency-symbol-map": "5.1.0",
     "dotenv": "17.2.3",
     "dotenv-expand": "12.0.3",
