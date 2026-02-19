@@ -163,7 +163,9 @@ func main() {
 	}()
 
 	// Initialize the SolarWinds APM library
-	cb, err := swo.Start()
+	cb, err := swo.Start(
+		semconv.ServiceName("astronomyshop-checkout"),
+	)
 	if err != nil {
 		// Handle error
 	}

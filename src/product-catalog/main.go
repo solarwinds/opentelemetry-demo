@@ -186,7 +186,9 @@ func main() {
 		}()
 	*/
 	// Initialize the SolarWinds APM library
-	cb, err := swo.Start()
+	cb, err := swo.Start(
+		semconv.ServiceName("astronomyshop-product-catalog"),
+	)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Error initializing SWO APM library: %v", err))
 	}
