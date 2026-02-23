@@ -7,10 +7,12 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   labels:
-    app.kubernetes.io/component: standalone-collector
+    app.kubernetes.io/component: agent-collector
     app.kubernetes.io/instance: opentelemetry-demo
+    app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: opentelemetry-collector
-    app.kubernetes.io/version: 0.120.0
+    app.kubernetes.io/part-of: opentelemetry-collector
+    app.kubernetes.io/version: 0.142.0
   name: otel-collector
   namespace: otel-demo
 ---
@@ -18,21 +20,33 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   labels:
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
   name: opentelemetry-demo
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    app.kubernetes.io/component: standalone-collector
+    app.kubernetes.io/component: agent-collector
     app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: opentelemetry-collector
-    app.kubernetes.io/version: 0.120.0
+    app.kubernetes.io/part-of: opentelemetry-collector
+    app.kubernetes.io/version: 0.142.0
   name: otel-collector
 rules:
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
 - apiGroups:
   - ""
   resources:
@@ -58,15 +72,88 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  - namespaces
+  - namespaces/status
+  - nodes
+  - nodes/spec
+  - pods
+  - pods/status
+  - replicationcontrollers
+  - replicationcontrollers/status
+  - resourcequotas
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  - deployments
+  - replicasets
+  - statefulsets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - extensions
+  resources:
+  - daemonsets
+  - deployments
+  - replicasets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  - cronjobs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - autoscaling
+  resources:
+  - horizontalpodautoscalers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - nodes/stats
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   labels:
-    app.kubernetes.io/component: standalone-collector
+    app.kubernetes.io/component: agent-collector
     app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: opentelemetry-collector
-    app.kubernetes.io/version: 0.120.0
+    app.kubernetes.io/part-of: opentelemetry-collector
+    app.kubernetes.io/version: 0.142.0
   name: otel-collector
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -83,6 +170,24 @@ data:
     {
       "$schema": "https://flagd.dev/schema/v0/flags.json",
       "flags": {
+        "llmInaccurateResponse": {
+          "defaultVariant": "off",
+          "description": "LLM returns an inaccurate product summary for product ID L9ECAV7KIM",
+          "state": "ENABLED",
+          "variants": {
+            "off": false,
+            "on": true
+          }
+        },
+        "llmRateLimitError": {
+          "defaultVariant": "off",
+          "description": "LLM intermittently returns a rate limit error",
+          "state": "ENABLED",
+          "variants": {
+            "off": false,
+            "on": true
+          }
+        },
         "productCatalogFailure": {
           "description": "Fail product catalog service on a specific product",
           "state": "ENABLED",
@@ -187,21 +292,42 @@ data:
             "off": 0
           },
           "defaultVariant": "off"
+        },
+        "failedReadinessProbe": {
+          "description": "readiness probe failure for cart service",
+          "state": "ENABLED",
+          "variants": {
+            "on": true,
+            "off": false
+          },
+          "defaultVariant": "off"
+        },
+        "emailMemoryLeak": {
+          "description": "Memory leak in the email service.",
+          "state": "ENABLED",
+          "variants": {
+            "off": 0,
+            "1x": 1,
+            "10x": 10,
+            "100x": 100,
+            "1000x": 1000,
+            "10000x": 10000
+          },
+          "defaultVariant": "off"
         }
       }
     }
 kind: ConfigMap
 metadata:
   labels:
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
   name: flagd-config
   namespace: otel-demo
 ---
 apiVersion: v1
 data:
-  relay: |
+  relay: |-
     connectors:
       spanmetrics: {}
     exporters:
@@ -236,6 +362,10 @@ data:
         - action: insert
           from_attribute: k8s.pod.uid
           key: service.instance.id
+      resourcedetection:
+        detectors:
+        - env
+        - system
       transform:
         error_mode: ignore
         trace_statements:
@@ -244,9 +374,7 @@ data:
           - replace_pattern(name, "\\?.*", "")
           - replace_match(name, "GET /api/products/*", "GET /api/products/{productId}")
     receivers:
-      httpcheck/frontend-proxy:
-        targets:
-        - endpoint: http://frontend-proxy:8080
+
       otlp:
         protocols:
           grpc:
@@ -257,9 +385,6 @@ data:
               - http://*
               - https://*
             endpoint: ${env:MY_POD_IP}:4318
-      redis:
-        collection_interval: 10s
-        endpoint: valkey-cart:6379
     service:
       extensions:
       - health_check
@@ -269,6 +394,7 @@ data:
           - debug
           processors:
           - memory_limiter
+          - resourcedetection
           - resource
           - batch
           receivers:
@@ -279,11 +405,10 @@ data:
           - debug
           processors:
           - memory_limiter
+          - resourcedetection
           - resource
           - batch
           receivers:
-          - httpcheck/frontend-proxy
-          - redis
           - otlp
           - spanmetrics
         traces:
@@ -300,235 +425,192 @@ data:
           - otlp
       telemetry:
         metrics:
-          address: ${env:MY_POD_IP}:8888
           level: detailed
           readers:
           - periodic:
               exporter:
                 otlp:
-                  endpoint: otel-collector:4318
-                  protocol: grpc
+                  endpoint: http://otel-collector:4318
+                  insecure: true
+                  protocol: http/protobuf
               interval: 10000
               timeout: 5000
 kind: ConfigMap
 metadata:
   labels:
-    app.kubernetes.io/component: standalone-collector
+    app.kubernetes.io/component: agent-collector
     app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: opentelemetry-collector
-    app.kubernetes.io/version: 0.120.0
-  name: otel-collector
+    app.kubernetes.io/part-of: opentelemetry-collector
+    app.kubernetes.io/version: 0.142.0
+  name: otel-collector-agent
   namespace: otel-demo
 ---
 apiVersion: v1
 data:
-  init: |
+  init.sql: |
     -- Copyright The OpenTelemetry Authors
     -- SPDX-License-Identifier: Apache-2.0
 
     CREATE USER otelu WITH PASSWORD 'otelp';
 
+    -- Accounting Service: create a schema
+    CREATE SCHEMA accounting;
+    GRANT USAGE ON SCHEMA accounting TO otelu;
 
-    -- Create a table
-    CREATE TABLE "order" (
-                            order_id TEXT PRIMARY KEY
+    -- Accounting Service: create tables
+    CREATE TABLE accounting."order" (
+        order_id TEXT PRIMARY KEY
     );
 
-    CREATE TABLE shipping (
-                              shipping_tracking_id TEXT PRIMARY KEY,
-                              shipping_cost_currency_code TEXT NOT NULL,
-                              shipping_cost_units BIGINT NOT NULL,
-                              shipping_cost_nanos INT NOT NULL,
-                              street_address TEXT,
-                              city TEXT,
-                              state TEXT,
-                              country TEXT,
-                              zip_code TEXT,
-                              order_id TEXT NOT NULL,
-                              FOREIGN KEY (order_id) REFERENCES "order"(order_id) ON DELETE CASCADE
+    CREATE TABLE accounting.shipping (
+        shipping_tracking_id TEXT PRIMARY KEY,
+        shipping_cost_currency_code TEXT NOT NULL,
+        shipping_cost_units BIGINT NOT NULL,
+        shipping_cost_nanos INT NOT NULL,
+        street_address TEXT,
+        city TEXT,
+        state TEXT,
+        country TEXT,
+        zip_code TEXT,
+        order_id TEXT NOT NULL,
+        FOREIGN KEY (order_id) REFERENCES accounting."order"(order_id) ON DELETE CASCADE
     );
 
-    CREATE TABLE orderitem (
-                              item_cost_currency_code TEXT NOT NULL,
-                              item_cost_units BIGINT NOT NULL,
-                              item_cost_nanos INT NOT NULL,
-                              product_id TEXT NOT NULL,
-                              quantity INT NOT NULL,
-                              order_id TEXT NOT NULL,
-                              PRIMARY KEY (order_id, product_id),
-                              FOREIGN KEY (order_id) REFERENCES "order"(order_id) ON DELETE CASCADE
+    CREATE TABLE accounting.orderitem (
+        item_cost_currency_code TEXT NOT NULL,
+        item_cost_units BIGINT NOT NULL,
+        item_cost_nanos INT NOT NULL,
+        product_id TEXT NOT NULL,
+        quantity INT NOT NULL,
+        order_id TEXT NOT NULL,
+        PRIMARY KEY (order_id, product_id),
+        FOREIGN KEY (order_id) REFERENCES accounting."order"(order_id) ON DELETE CASCADE
     );
 
-    GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO otelu;
+    -- Accounting Service: grant permission to schema
+    GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA accounting TO otelu;
+
+    -- Product Review Service: create a schema
+    CREATE SCHEMA reviews;
+    GRANT USAGE ON SCHEMA reviews TO otelu;
+
+    -- Product Review Service: create tables
+    CREATE TABLE reviews.productreviews (
+        id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+        product_id VARCHAR(16) NOT NULL,
+        username VARCHAR(64) NOT NULL,
+        description VARCHAR(1024),
+        score NUMERIC(2,1) NOT NULL
+    );
+
+    -- Product Review Service: create index for product_id lookups
+    CREATE INDEX product_id_index ON reviews.productreviews (product_id);
+
+    -- Product Review Service: grant permission to schema
+    GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA reviews TO otelu;
+
+    -- Product Review Service:  add product review data
+    INSERT INTO reviews.productreviews (product_id, username, description, score)
+    VALUES
+        ('OLJCESPC7Z', 'stargazer_mike', 'Great entry-level telescope! Easy to set up and provides clear views of the moon and brighter planets. Highly recommend for new astronomers.', '4.5'),
+        ('OLJCESPC7Z', 'nightskylover', 'For the price, this Explorascope delivers excellent performance. I was able to see Jupiter''s moons clearly. A fantastic purchase for casual viewing.', '4.0'),
+        ('OLJCESPC7Z', 'beginner_astro', 'A bit tricky to get used to the manual controls, but once you do, it''s very rewarding. Saw the Orion Nebula for the first time! Good value.', '3.5'),
+        ('OLJCESPC7Z', 'celestial_explorer', 'Perfect for camping trips. It''s lightweight and portable, making it easy to take anywhere. The views are surprisingly good for its size.', '4.0'),
+        ('OLJCESPC7Z', 'telescope_fan', 'Not the most powerful scope, but it''s great for kids and beginners. My children love looking at the moon with it. A solid choice for family fun.', '3.0'),
+
+        ('66VCHSJNUP', 'tech_astro', 'The StarSense app is revolutionary! It made finding celestial objects incredibly easy. This telescope is a game-changer for beginners.', '5.0'),
+        ('66VCHSJNUP', 'app_user', 'Amazing technology, the smartphone integration works flawlessly. I''ve never had so much fun exploring the night sky. Worth every penny.', '4.5'),
+        ('66VCHSJNUP', 'innovator_john', 'Setup was a breeze, and the tutorials in the app are very helpful. The views are crisp and clear. My only minor gripe is battery drain on the phone.', '4.0'),
+        ('66VCHSJNUP', 'clear_skies', 'Finally, a telescope that takes the guesswork out of stargazing. The real-time positioning is incredibly accurate. Highly recommended for anyone new to astronomy.', '5.0'),
+        ('66VCHSJNUP', 'gadget_geek', 'Fantastic product, the app truly guides you. It''s like having a personal astronomer with you. The optical quality is also very good.', '4.5'),
+
+        ('1YMWWN1N4O', 'solar_viewer', 'Perfect for solar observations! The Solar Safe filter gives peace of mind. I used it for the last partial eclipse and it was fantastic.', '5.0'),
+        ('1YMWWN1N4O', 'eclipse_chaser', 'Compact and easy to carry, this telescope is ideal for eclipse events. The included backpack is a nice touch. Views of the sun are incredibly clear and safe.', '4.5'),
+        ('1YMWWN1N4O', 'travel_astro', 'Excellent travel scope for solar viewing. The magnification is much better than binoculars for the sun. A must-have for any solar enthusiast.', '4.0'),
+        ('1YMWWN1N4O', 'sun_gazer', 'Very impressed with the safety features and clarity. Sharing the sun with family has never been easier or safer. Great value for a dedicated solar scope.', '5.0'),
+        ('1YMWWN1N4O', 'safe_viewer', 'The ISO compliant filter is reassuring. It''s a well-designed product for safe solar observation. Highly recommend for educational purposes too.', '4.5'),
+
+        ('L9ECAV7KIM', 'clean_optics', 'This kit is a lifesaver for all my optics. The brush and wipes work perfectly without leaving any residue. My lenses have never been cleaner.', '5.0'),
+        ('L9ECAV7KIM', 'photog_pro', 'Essential for any photographer or telescope owner. It safely removes dust and fingerprints. A high-quality cleaning solution.', '4.5'),
+        ('L9ECAV7KIM', 'daily_cleaner', 'I use this on my binoculars, camera lenses, and even my phone screen. It''s very effective and gentle. A versatile cleaning kit.', '4.0'),
+        ('L9ECAV7KIM', 'tech_maintenance', 'Great value for money. The different cleaning options cover all needs. Keeps my expensive equipment in pristine condition.', '5.0'),
+        ('L9ECAV7KIM', 'sharp_view', 'Works as advertised, my telescope views are much clearer after using this. The fluid and cloth are excellent. Definitely recommend.', '4.5'),
+
+        ('2ZYFJ3GM2N', 'bird_watcher', 'Incredible clarity and brightness, perfect for bird watching. The ED glass really makes a difference. I can spot the subtlest markings.', '5.0'),
+        ('2ZYFJ3GM2N', 'nature_lover', 'These binoculars are fantastic for nature observation. The close focus is a huge advantage for viewing nearby wildlife. Very comfortable to hold.', '4.5'),
+        ('2ZYFJ3GM2N', 'hiker_guy', 'Lightweight and durable, these are my go-to binoculars for hiking. The wide field of view is excellent. Highly recommend for outdoor enthusiasts.', '4.0'),
+        ('2ZYFJ3GM2N', 'stadium_fan', 'Took these to a game and had an amazing view of the action. They perform great in various lighting conditions. A solid all-around binocular.', '4.0'),
+        ('2ZYFJ3GM2N', 'outdoor_adventurer', 'Excellent build quality and optical performance. They feel robust and provide sharp images. A great investment for any outdoor activity.', '4.5'),
+
+        ('0PUK6V6EV0', 'astro_photog', 'This imager is a fantastic step up for planetary photography. The color quality is superb. Easy to use with my existing telescope setup.', '5.0'),
+        ('0PUK6V6EV0', 'planet_shooter', 'Finally capturing stunning images of Saturn and Jupiter! The NexImage 10 makes it so accessible. Great for beginners in astrophotography.', '4.5'),
+        ('0PUK6V6EV0', 'imager_pro', 'Excellent resolution and color rendition for its price point. It''s a perfect solution for those looking to start imaging planets. Highly satisfied.', '4.0'),
+        ('0PUK6V6EV0', 'space_artist', 'The detail I can capture with this imager is incredible. It integrates well with various software. A must-have for serious planetary observers.', '5.0'),
+        ('0PUK6V6EV0', 'digital_sky', 'A solid choice for getting into solar system imaging. The setup was straightforward. Produces beautiful, vibrant planetary images.', '4.5'),
+
+        ('LS4PSXUNUM', 'night_walker', 'The red light is perfect for preserving night vision during astronomy sessions. The hand warmer is an unexpected bonus. Very practical device.', '5.0'),
+        ('LS4PSXUNUM', 'star_party_goer', 'This flashlight is indispensable for star parties. The red mode is gentle on the eyes, and the power bank feature is super handy. Love it!', '4.5'),
+        ('LS4PSXUNUM', 'camper_chris', 'Rugged and versatile, this flashlight is great for camping and night walks. The hand warmer function is a game-changer on cold nights. Highly recommend.', '4.5'),
+        ('LS4PSXUNUM', 'emergency_kit', 'A fantastic multi-tool for my emergency kit. The red light is useful, and the power bank means I can charge my phone. Great design.', '4.0'),
+        ('LS4PSXUNUM', 'astro_accessory', 'Every astronomer needs one of these. The red light is essential, and the hand warmer and power bank make it incredibly useful. A top-tier accessory.', '5.0'),
+
+        ('9SIQT8TOJO', 'deep_sky_master', 'The RASA V2 is a dream come true for deep-sky imaging. The f/2.2 speed drastically cuts down exposure times. My best astrophotography investment yet.', '5.0'),
+        ('9SIQT8TOJO', 'pro_astro', 'Unbelievable performance for wide-field astrophotography. The short focal length makes guiding less critical. Produces stunning, detailed images.', '5.0'),
+        ('9SIQT8TOJO', 'imaging_guru', 'This OTA is a beast! The fast optics mean more data in less time. If you''re serious about deep-sky imaging, this is the one.', '4.5'),
+        ('9SIQT8TOJO', 'advanced_scope', 'Worth every penny for the quality and speed it offers. My images have never been sharper or more vibrant. A truly professional piece of equipment.', '5.0'),
+        ('9SIQT8TOJO', 'precision_optics', 'The engineering behind this RASA is exceptional. It''s incredibly efficient for capturing faint objects. A high-end choice for dedicated imagers.', '4.5'),
+
+        ('6E92ZMYYFZ', 'solar_safety', 'Essential for safe solar viewing with my 8-inch telescope. The Velcro straps ensure it stays securely in place. Peace of mind during solar observations.', '5.0'),
+        ('6E92ZMYYFZ', 'telescope_upgrade', 'This EclipSmart filter is a perfect addition to my setup. The ISO compliance is crucial. Highly recommend for anyone looking to view the sun safely.', '4.5'),
+        ('6E92ZMYYFZ', 'safe_sun_gazer', 'Easy to attach and provides crystal clear, safe views of the sun. The build quality is excellent. A must-have accessory for solar enthusiasts.', '5.0'),
+        ('6E92ZMYYFZ', 'filter_fan', 'Works perfectly with my 8-inch scope. No more worries about accidental dislodgement. Great product for protecting your eyes and equipment.', '4.5'),
+        ('6E92ZMYYFZ', 'eclipse_ready', 'Bought this for the upcoming eclipse, and it fits perfectly. Tested it out, and the views are fantastic and safe. Very happy with this purchase.', '5.0'),
+
+        ('HQTGWGPNH4', 'history_buff', 'A fascinating glimpse into historical astronomical thought. The content is incredibly insightful. A must-read for anyone interested in the history of science.', '5.0'),
+        ('HQTGWGPNH4', 'bookworm_astro', 'Beautifully presented historical document. It''s amazing to see how comets were understood centuries ago. A valuable addition to any astronomy library.', '4.5'),
+        ('HQTGWGPNH4', 'ancient_texts', 'Such a unique and intriguing read. The historical context is captivating. It offers a different perspective on celestial events.', '4.0'),
+        ('HQTGWGPNH4', 'celestial_history', 'I love historical astronomy, and this book delivers. It''s well-researched and provides a window into past beliefs. Highly recommended for scholars.', '5.0'),
+        ('HQTGWGPNH4', 'rare_find', 'A truly special book for enthusiasts of astronomical history. The details about ancient astrologers are very interesting. Great for a deeper understanding.', '4.5');
+
+    -- Product Catalog Service: create a schema
+    CREATE SCHEMA catalog;
+    GRANT USAGE ON SCHEMA catalog TO otelu;
+
+    -- Product Catalog Service: create tables
+    CREATE TABLE catalog.products (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        picture TEXT,
+        price_currency_code TEXT NOT NULL,
+        price_units BIGINT NOT NULL,
+        price_nanos INT NOT NULL,
+        categories TEXT
+    );
+
+    -- Product Catalog Service: grant permission to schema
+    GRANT SELECT ON ALL TABLES IN SCHEMA catalog TO otelu;
+
+    -- Product Catalog Service: add product data
+    INSERT INTO catalog.products (id, name, description, picture, price_currency_code, price_units, price_nanos, categories)
+    VALUES
+        ('OLJCESPC7Z', 'National Park Foundation Explorascope', 'The National Park Foundation''s (NPF) Explorascope 60AZ is a manual alt-azimuth, refractor telescope perfect for celestial viewing on the go. The NPF Explorascope 60 can view the planets, moon, star clusters and brighter deep sky objects like the Orion Nebula and Andromeda Galaxy.', 'NationalParkFoundationExplorascope.jpg', 'USD', 101, 960000000, 'telescopes'),
+        ('66VCHSJNUP', 'Starsense Explorer Refractor Telescope', 'The first telescope that uses your smartphone to analyze the night sky and calculate its position in real time. StarSense Explorer is ideal for beginners thanks to the app''s user-friendly interface and detailed tutorials. It''s like having your own personal tour guide of the night sky', 'StarsenseExplorer.jpg', 'USD', 349, 950000000, 'telescopes'),
+        ('1YMWWN1N4O', 'Eclipsmart Travel Refractor Telescope', 'Dedicated white-light solar scope for the observer on the go. The 50mm refracting solar scope uses Solar Safe, ISO compliant, full-aperture glass filter material to ensure the safest view of solar events.  The kit comes complete with everything you need, including the dedicated travel solar scope, a Solar Safe finderscope, tripod, a high quality 20mm (18x) Kellner eyepiece and a nylon backpack to carry everything in.  This Travel Solar Scope makes it easy to share the Sun as well as partial and total solar eclipses with the whole family and offers much higher magnifications than you would otherwise get using handheld solar viewers or binoculars.', 'EclipsmartTravelRefractorTelescope.jpg', 'USD', 129, 950000000, 'telescopes,travel'),
+        ('L9ECAV7KIM', 'Lens Cleaning Kit', 'Wipe away dust, dirt, fingerprints and other particles on your lenses to see clearly with the Lens Cleaning Kit. This cleaning kit works on all glass and optical surfaces, including telescopes, binoculars, spotting scopes, monoculars, microscopes, and even your camera lenses, computer screens, and mobile devices.  The kit comes complete with a retractable lens brush to remove dust particles and dirt and two options to clean smudges and fingerprints off of your optics, pre-moistened lens wipes and a bottled lens cleaning fluid with soft cloth.', 'LensCleaningKit.jpg', 'USD', 21, 950000000, 'accessories'),
+        ('2ZYFJ3GM2N', 'Roof Binoculars', 'This versatile, all-around binocular is a great choice for the trail, the stadium, the arena, or just about anywhere you want a close-up view of the action without sacrificing brightness or detail. It''s an especially great companion for nature observation and bird watching, with ED glass that helps you spot the subtlest field markings and a close focus of just 6.5 feet.', 'RoofBinoculars.jpg', 'USD', 209, 950000000, 'binoculars'),
+        ('0PUK6V6EV0', 'Solar System Color Imager', 'You have your new telescope and have observed Saturn and Jupiter. Now you''re ready to take the next step and start imaging them. But where do you begin? The NexImage 10 Solar System Imager is the perfect solution.', 'SolarSystemColorImager.jpg', 'USD', 175, 0, 'accessories,telescopes'),
+        ('LS4PSXUNUM', 'Red Flashlight', 'This 3-in-1 device features a 3-mode red flashlight, a hand warmer, and a portable power bank for recharging your personal electronics on the go. Whether you use it to light the way at an astronomy star party, a night walk, or wildlife research, ThermoTorch 3 Astro Red''s rugged, IPX4-rated design will withstand your everyday activities.', 'RedFlashlight.jpg', 'USD', 57, 80000000, 'accessories,flashlights'),
+        ('9SIQT8TOJO', 'Optical Tube Assembly', 'Capturing impressive deep-sky astroimages is easier than ever with Rowe-Ackermann Schmidt Astrograph (RASA) V2, the perfect companion to today''s top DSLR or astronomical CCD cameras. This fast, wide-field f/2.2 system allows for shorter exposure times compared to traditional f/10 astroimaging, without sacrificing resolution. Because shorter sub-exposure times are possible, your equatorial mount won''t need to accurately track over extended periods. The short focal length also lessens equatorial tracking demands. In many cases, autoguiding will not be required.', 'OpticalTubeAssembly.jpg', 'USD', 3599, 0, 'accessories,telescopes,assembly'),
+        ('6E92ZMYYFZ', 'Solar Filter', 'Enhance your viewing experience with EclipSmart Solar Filter for 8" telescopes. With two Velcro straps and four self-adhesive Velcro pads for added safety, you can be assured that the solar filter cannot be accidentally knocked off and will provide Solar Safe, ISO compliant viewing.', 'SolarFilter.jpg', 'USD', 69, 950000000, 'accessories,telescopes'),
+        ('HQTGWGPNH4', 'The Comet Book', 'A 16th-century treatise on comets, created anonymously in Flanders (now northern France) and now held at the Universitätsbibliothek Kassel. Commonly known as The Comet Book (or Kometenbuch in German), its full title translates as "Comets and their General and Particular Meanings, According to Ptolomeé, Albumasar, Haly, Aliquind and other Astrologers". The image is from https://publicdomainreview.org/collection/the-comet-book, made available by the Universitätsbibliothek Kassel under a CC-BY SA 4.0 license (https://creativecommons.org/licenses/by-sa/4.0/)', 'TheCometBook.jpg', 'USD', 0, 990000000, 'books');
 kind: ConfigMap
 metadata:
   labels:
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
   name: postgresql-init
-  namespace: otel-demo
----
-apiVersion: v1
-data:
-  products.json: |
-    {
-      "products": [
-        {
-          "id": "OLJCESPC7Z",
-          "name": "National Park Foundation Explorascope",
-          "description": "The National Park Foundation’s (NPF) Explorascope 60AZ is a manual alt-azimuth, refractor telescope perfect for celestial viewing on the go. The NPF Explorascope 60 can view the planets, moon, star clusters and brighter deep sky objects like the Orion Nebula and Andromeda Galaxy.",
-          "picture": "NationalParkFoundationExplorascope.jpg",
-          "priceUsd": {
-            "currencyCode": "USD",
-            "units": 101,
-            "nanos": 960000000
-          },
-          "categories": [
-            "telescopes"
-          ]
-        },
-        {
-          "id": "66VCHSJNUP",
-          "name": "Starsense Explorer Refractor Telescope",
-          "description": "The first telescope that uses your smartphone to analyze the night sky and calculate its position in real time. StarSense Explorer is ideal for beginners thanks to the app’s user-friendly interface and detailed tutorials. It’s like having your own personal tour guide of the night sky",
-          "picture": "StarsenseExplorer.jpg",
-          "priceUsd": {
-            "currencyCode": "USD",
-            "units": 349,
-            "nanos": 950000000
-          },
-          "categories": [
-            "telescopes"
-          ]
-        },
-        {
-          "id": "1YMWWN1N4O",
-          "name": "Eclipsmart Travel Refractor Telescope",
-          "description": "Dedicated white-light solar scope for the observer on the go. The 50mm refracting solar scope uses Solar Safe, ISO compliant, full-aperture glass filter material to ensure the safest view of solar events.  The kit comes complete with everything you need, including the dedicated travel solar scope, a Solar Safe finderscope, tripod, a high quality 20mm (18x) Kellner eyepiece and a nylon backpack to carry everything in.  This Travel Solar Scope makes it easy to share the Sun as well as partial and total solar eclipses with the whole family and offers much higher magnifications than you would otherwise get using handheld solar viewers or binoculars.",
-          "picture": "EclipsmartTravelRefractorTelescope.jpg",
-          "priceUsd": {
-            "currencyCode": "USD",
-            "units": 129,
-            "nanos": 950000000
-          },
-          "categories": [
-            "telescopes",
-            "travel"
-          ]
-        },
-        {
-          "id": "L9ECAV7KIM",
-          "name": "Lens Cleaning Kit",
-          "description": "Wipe away dust, dirt, fingerprints and other particles on your lenses to see clearly with the Lens Cleaning Kit. This cleaning kit works on all glass and optical surfaces, including telescopes, binoculars, spotting scopes, monoculars, microscopes, and even your camera lenses, computer screens, and mobile devices.  The kit comes complete with a retractable lens brush to remove dust particles and dirt and two options to clean smudges and fingerprints off of your optics, pre-moistened lens wipes and a bottled lens cleaning fluid with soft cloth.",
-          "picture": "LensCleaningKit.jpg",
-          "priceUsd": {
-            "currencyCode": "USD",
-            "units": 21,
-            "nanos": 950000000
-          },
-          "categories": [
-            "accessories"
-          ]
-        },
-        {
-          "id": "2ZYFJ3GM2N",
-          "name": "Roof Binoculars",
-          "description": "This versatile, all-around binocular is a great choice for the trail, the stadium, the arena, or just about anywhere you want a close-up view of the action without sacrificing brightness or detail. It’s an especially great companion for nature observation and bird watching, with ED glass that helps you spot the subtlest field markings and a close focus of just 6.5 feet.",
-          "picture": "RoofBinoculars.jpg",
-          "priceUsd": {
-            "currencyCode": "USD",
-            "units": 209,
-            "nanos": 950000000
-          },
-          "categories": [
-            "binoculars"
-          ]
-        },
-        {
-          "id": "0PUK6V6EV0",
-          "name": "Solar System Color Imager",
-          "description": "You have your new telescope and have observed Saturn and Jupiter. Now you're ready to take the next step and start imaging them. But where do you begin? The NexImage 10 Solar System Imager is the perfect solution.",
-          "picture": "SolarSystemColorImager.jpg",
-          "priceUsd": {
-            "currencyCode": "USD",
-            "units": 175,
-            "nanos": 0
-          },
-          "categories": [
-            "accessories",
-            "telescopes"
-          ]
-        },
-        {
-          "id": "LS4PSXUNUM",
-          "name": "Red Flashlight",
-          "description": "This 3-in-1 device features a 3-mode red flashlight, a hand warmer, and a portable power bank for recharging your personal electronics on the go. Whether you use it to light the way at an astronomy star party, a night walk, or wildlife research, ThermoTorch 3 Astro Red’s rugged, IPX4-rated design will withstand your everyday activities.",
-          "picture": "RedFlashlight.jpg",
-          "priceUsd": {
-            "currencyCode": "USD",
-            "units": 57,
-            "nanos": 80000000
-          },
-          "categories": [
-            "accessories",
-            "flashlights"
-          ]
-        },
-        {
-          "id": "9SIQT8TOJO",
-          "name": "Optical Tube Assembly",
-          "description": "Capturing impressive deep-sky astroimages is easier than ever with Rowe-Ackermann Schmidt Astrograph (RASA) V2, the perfect companion to today’s top DSLR or astronomical CCD cameras. This fast, wide-field f/2.2 system allows for shorter exposure times compared to traditional f/10 astroimaging, without sacrificing resolution. Because shorter sub-exposure times are possible, your equatorial mount won’t need to accurately track over extended periods. The short focal length also lessens equatorial tracking demands. In many cases, autoguiding will not be required.",
-          "picture": "OpticalTubeAssembly.jpg",
-          "priceUsd": {
-            "currencyCode": "USD",
-            "units": 3599,
-            "nanos": 0
-          },
-          "categories": [
-            "accessories",
-            "telescopes",
-            "assembly"
-          ]
-        },
-        {
-          "id": "6E92ZMYYFZ",
-          "name": "Solar Filter",
-          "description": "Enhance your viewing experience with EclipSmart Solar Filter for 8” telescopes. With two Velcro straps and four self-adhesive Velcro pads for added safety, you can be assured that the solar filter cannot be accidentally knocked off and will provide Solar Safe, ISO compliant viewing.",
-          "picture": "SolarFilter.jpg",
-          "priceUsd": {
-            "currencyCode": "USD",
-            "units": 69,
-            "nanos": 950000000
-          },
-          "categories": [
-            "accessories",
-            "telescopes"
-          ]
-        },
-        {
-          "id": "HQTGWGPNH4",
-          "name": "The Comet Book",
-          "description": "A 16th-century treatise on comets, created anonymously in Flanders (now northern France) and now held at the Universitätsbibliothek Kassel. Commonly known as The Comet Book (or Kometenbuch in German), its full title translates as “Comets and their General and Particular Meanings, According to Ptolomeé, Albumasar, Haly, Aliquind and other Astrologers”. The image is from https://publicdomainreview.org/collection/the-comet-book, made available by the Universitätsbibliothek Kassel under a CC-BY SA 4.0 license (https://creativecommons.org/licenses/by-sa/4.0/)",
-          "picture": "TheCometBook.jpg",
-          "priceUsd": {
-            "currencyCode": "USD",
-            "units": 0,
-            "nanos": 990000000
-          },
-          "categories": [
-            "books"
-          ]
-        }
-      ]
-    }
-kind: ConfigMap
-metadata:
-  labels:
-    app.kubernetes.io/instance: opentelemetry-demo
-    app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
-  name: product-catalog-products
   namespace: otel-demo
 ---
 apiVersion: v1
@@ -548,15 +630,16 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app.kubernetes.io/component: standalone-collector
+    app.kubernetes.io/component: agent-collector
     app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: opentelemetry-collector
-    app.kubernetes.io/version: 0.120.0
-    component: standalone-collector
+    app.kubernetes.io/part-of: opentelemetry-collector
+    app.kubernetes.io/version: 0.142.0
+    component: agent-collector
   name: otel-collector
   namespace: otel-demo
 spec:
-  internalTrafficPolicy: Cluster
+  internalTrafficPolicy: Local
   ports:
   - appProtocol: grpc
     name: otlp
@@ -570,7 +653,7 @@ spec:
   selector:
     app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: opentelemetry-collector
-    component: standalone-collector
+    component: agent-collector
   type: ClusterIP
 ---
 apiVersion: v1
@@ -578,10 +661,9 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: ad
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: ad
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: ad
   name: ad
 spec:
@@ -598,10 +680,9 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: cart
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: cart
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: cart
   name: cart
 spec:
@@ -618,10 +699,9 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: checkout
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: checkout
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: checkout
   name: checkout
 spec:
@@ -638,10 +718,9 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: currency
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: currency
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: currency
   name: currency
 spec:
@@ -658,10 +737,9 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: email
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: email
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: email
   name: email
 spec:
@@ -678,10 +756,9 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: flagd
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: flagd
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: flagd
   name: flagd
 spec:
@@ -704,10 +781,9 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: frontend
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: frontend
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: frontend
   name: frontend
 spec:
@@ -724,10 +800,9 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: frontend-proxy
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: frontend-proxy
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: frontend-proxy
   name: frontend-proxy
 spec:
@@ -744,10 +819,9 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: image-provider
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: image-provider
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: image-provider
   name: image-provider
 spec:
@@ -764,10 +838,9 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: kafka
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: kafka
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: kafka
   name: kafka
 spec:
@@ -786,11 +859,29 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
+    app.kubernetes.io/component: llm
+    app.kubernetes.io/name: llm
+    app.kubernetes.io/part-of: opentelemetry-demo
+    app.kubernetes.io/version: 2.2.0
+    opentelemetry.io/name: llm
+  name: llm
+spec:
+  ports:
+  - name: tcp-service
+    port: 8000
+    targetPort: 8000
+  selector:
+    opentelemetry.io/name: llm
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
     app.kubernetes.io/component: load-generator
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: load-generator
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: load-generator
   name: load-generator
 spec:
@@ -807,10 +898,9 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: payment
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: payment
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: payment
   name: payment
 spec:
@@ -827,15 +917,14 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: postgresql
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: postgresql
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: postgresql
   name: postgresql
 spec:
   ports:
-  - name: postgresql
+  - name: tcp-service
     port: 5432
     targetPort: 5432
   selector:
@@ -847,10 +936,9 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: product-catalog
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: product-catalog
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: product-catalog
   name: product-catalog
 spec:
@@ -866,11 +954,29 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
+    app.kubernetes.io/component: product-reviews
+    app.kubernetes.io/name: product-reviews
+    app.kubernetes.io/part-of: opentelemetry-demo
+    app.kubernetes.io/version: 2.2.0
+    opentelemetry.io/name: product-reviews
+  name: product-reviews
+spec:
+  ports:
+  - name: tcp-service
+    port: 3551
+    targetPort: 3551
+  selector:
+    opentelemetry.io/name: product-reviews
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
     app.kubernetes.io/component: quote
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: quote
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: quote
   name: quote
 spec:
@@ -887,10 +993,9 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: recommendation
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: recommendation
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: recommendation
   name: recommendation
 spec:
@@ -907,10 +1012,9 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: shipping
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: shipping
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: shipping
   name: shipping
 spec:
@@ -927,10 +1031,9 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: valkey-cart
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: valkey-cart
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: valkey-cart
   name: valkey-cart
 spec:
@@ -957,98 +1060,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app.kubernetes.io/component: standalone-collector
-    app.kubernetes.io/instance: opentelemetry-demo
-    app.kubernetes.io/name: opentelemetry-collector
-    app.kubernetes.io/version: 0.120.0
-  name: otel-collector
-  namespace: otel-demo
-spec:
-  replicas: 1
-  revisionHistoryLimit: 10
-  selector:
-    matchLabels:
-      app.kubernetes.io/instance: opentelemetry-demo
-      app.kubernetes.io/name: opentelemetry-collector
-      component: standalone-collector
-  strategy:
-    type: RollingUpdate
-  template:
-    metadata:
-      annotations:
-        checksum/config: a89266db0e62ae4711e3cef2ea43e19dac4d19232eb4bb06b05882a36f128110
-        opentelemetry_community_demo: "true"
-        prometheus.io/scrape: "true"
-      labels:
-        app.kubernetes.io/instance: opentelemetry-demo
-        app.kubernetes.io/name: opentelemetry-collector
-        component: standalone-collector
-    spec:
-      containers:
-      - args:
-        - --config=/conf/relay.yaml
-        env:
-        - name: MY_POD_IP
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: status.podIP
-        - name: GOMEMLIMIT
-          value: 160MiB
-        - name: SW_APM_SERVICE_TOKEN
-          valueFrom:
-            secretKeyRef:
-              key: token
-              name: swo-apm
-              optional: false
-        envFrom:
-        - configMapRef:
-            name: swo-config
-        image: otel/opentelemetry-collector-contrib:0.120.0
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 13133
-        name: opentelemetry-collector
-        ports:
-        - containerPort: 4317
-          name: otlp
-          protocol: TCP
-        - containerPort: 4318
-          name: otlp-http
-          protocol: TCP
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 13133
-        resources:
-          limits:
-            memory: 200Mi
-        securityContext: {}
-        volumeMounts:
-        - mountPath: /conf
-          name: opentelemetry-collector-configmap
-      hostNetwork: false
-      securityContext: {}
-      serviceAccountName: otel-collector
-      volumes:
-      - configMap:
-          items:
-          - key: relay
-            path: relay.yaml
-          name: otel-collector
-        name: opentelemetry-collector-configmap
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
     app.kubernetes.io/component: accounting
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: accounting
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: accounting
   name: accounting
 spec:
@@ -1059,10 +1074,12 @@ spec:
       opentelemetry.io/name: accounting
   template:
     metadata:
+      annotations:
+        resource.opentelemetry.io/service.namespace: otel-demo
       labels:
         app.kubernetes.io/component: accounting
-        app.kubernetes.io/instance: opentelemetry-demo
         app.kubernetes.io/name: accounting
+        app.kubernetes.io/version: 2.2.0
         opentelemetry.io/name: accounting
     spec:
       containers:
@@ -1088,7 +1105,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.0.2-accounting
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-accounting
         imagePullPolicy: IfNotPresent
         name: accounting
         resources:
@@ -1103,17 +1120,16 @@ spec:
         image: busybox:latest
         name: wait-for-kafka
       serviceAccountName: opentelemetry-demo
-      volumes: null
+      volumes: []
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: ad
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: ad
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: ad
   name: ad
 spec:
@@ -1124,10 +1140,12 @@ spec:
       opentelemetry.io/name: ad
   template:
     metadata:
+      annotations:
+        resource.opentelemetry.io/service.namespace: otel-demo
       labels:
         app.kubernetes.io/component: ad
-        app.kubernetes.io/instance: opentelemetry-demo
         app.kubernetes.io/name: ad
+        app.kubernetes.io/version: 2.2.0
         opentelemetry.io/name: ad
     spec:
       containers:
@@ -1151,7 +1169,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.0.2-ad
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-ad
         imagePullPolicy: IfNotPresent
         name: ad
         ports:
@@ -1162,17 +1180,16 @@ spec:
             memory: 300Mi
         volumeMounts: null
       serviceAccountName: opentelemetry-demo
-      volumes: null
+      volumes: []
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: cart
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: cart
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: cart
   name: cart
 spec:
@@ -1183,10 +1200,12 @@ spec:
       opentelemetry.io/name: cart
   template:
     metadata:
+      annotations:
+        resource.opentelemetry.io/service.namespace: otel-demo
       labels:
         app.kubernetes.io/component: cart
-        app.kubernetes.io/instance: opentelemetry-demo
         app.kubernetes.io/name: cart
+        app.kubernetes.io/version: 2.2.0
         opentelemetry.io/name: cart
     spec:
       containers:
@@ -1222,7 +1241,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.0.2-cart
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-cart
         imagePullPolicy: IfNotPresent
         name: cart
         ports:
@@ -1241,17 +1260,16 @@ spec:
         image: busybox:latest
         name: wait-for-valkey-cart
       serviceAccountName: opentelemetry-demo
-      volumes: null
+      volumes: []
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: checkout
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: checkout
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: checkout
   name: checkout
 spec:
@@ -1262,10 +1280,12 @@ spec:
       opentelemetry.io/name: checkout
   template:
     metadata:
+      annotations:
+        resource.opentelemetry.io/service.namespace: otel-demo
       labels:
         app.kubernetes.io/component: checkout
-        app.kubernetes.io/instance: opentelemetry-demo
         app.kubernetes.io/name: checkout
+        app.kubernetes.io/version: 2.2.0
         opentelemetry.io/name: checkout
     spec:
       containers:
@@ -1292,6 +1312,8 @@ spec:
           value: flagd
         - name: FLAGD_PORT
           value: "8013"
+        - name: GOMEMLIMIT
+          value: 16MiB
         - name: SW_APM_SERVICE_TOKEN
           valueFrom:
             secretKeyRef:
@@ -1303,7 +1325,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.0.2-checkout
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-checkout
         imagePullPolicy: IfNotPresent
         name: checkout
         ports:
@@ -1321,17 +1343,16 @@ spec:
         image: busybox:latest
         name: wait-for-kafka
       serviceAccountName: opentelemetry-demo
-      volumes: null
+      volumes: []
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: currency
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: currency
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: currency
   name: currency
 spec:
@@ -1342,10 +1363,12 @@ spec:
       opentelemetry.io/name: currency
   template:
     metadata:
+      annotations:
+        resource.opentelemetry.io/service.namespace: otel-demo
       labels:
         app.kubernetes.io/component: currency
-        app.kubernetes.io/instance: opentelemetry-demo
         app.kubernetes.io/name: currency
+        app.kubernetes.io/version: 2.2.0
         opentelemetry.io/name: currency
     spec:
       containers:
@@ -1361,15 +1384,15 @@ spec:
         - name: OTEL_EXPORTER_OTLP_ENDPOINT
           value: http://$(OTEL_COLLECTOR_NAME):4317
         - name: VERSION
-          value: 2.0.2
-        - name: OTEL_RESOURCE_ATTRIBUTES
-          value: service.name=$(OTEL_SERVICE_NAME),service.namespace=opentelemetry-demo,service.version=2.0.2
+          value: 2.2.0
+        - name: IPV6_ENABLED
+          value: "false"
         - name: OTEL_SDK_DISABLED
           value: $(UPSTREAM_DISTRO_DISABLED)
         envFrom:
         - configMapRef:
             name: swo-config
-        image: ghcr.io/open-telemetry/demo:2.0.2-currency
+        image: ghcr.io/open-telemetry/demo:2.2.0-currency
         imagePullPolicy: IfNotPresent
         name: currency
         ports:
@@ -1380,17 +1403,16 @@ spec:
             memory: 20Mi
         volumeMounts: null
       serviceAccountName: opentelemetry-demo
-      volumes: null
+      volumes: []
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: email
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: email
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: email
   name: email
 spec:
@@ -1401,10 +1423,12 @@ spec:
       opentelemetry.io/name: email
   template:
     metadata:
+      annotations:
+        resource.opentelemetry.io/service.namespace: otel-demo
       labels:
         app.kubernetes.io/component: email
-        app.kubernetes.io/instance: opentelemetry-demo
         app.kubernetes.io/name: email
+        app.kubernetes.io/version: 2.2.0
         opentelemetry.io/name: email
     spec:
       containers:
@@ -1415,6 +1439,10 @@ spec:
           value: "8080"
         - name: APP_ENV
           value: production
+        - name: FLAGD_HOST
+          value: flagd
+        - name: FLAGD_PORT
+          value: "8013"
         - name: SW_APM_SERVICE_TOKEN
           valueFrom:
             secretKeyRef:
@@ -1426,7 +1454,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.0.2-email
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-email
         imagePullPolicy: IfNotPresent
         name: email
         ports:
@@ -1437,17 +1465,16 @@ spec:
             memory: 100Mi
         volumeMounts: null
       serviceAccountName: opentelemetry-demo
-      volumes: null
+      volumes: []
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: flagd
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: flagd
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: flagd
   name: flagd
 spec:
@@ -1458,10 +1485,12 @@ spec:
       opentelemetry.io/name: flagd
   template:
     metadata:
+      annotations:
+        resource.opentelemetry.io/service.namespace: otel-demo
       labels:
         app.kubernetes.io/component: flagd
-        app.kubernetes.io/instance: opentelemetry-demo
         app.kubernetes.io/name: flagd
+        app.kubernetes.io/version: 2.2.0
         opentelemetry.io/name: flagd
     spec:
       containers:
@@ -1485,14 +1514,14 @@ spec:
           value: otel
         - name: FLAGD_OTEL_COLLECTOR_URI
           value: $(OTEL_COLLECTOR_NAME):4317
-        - name: OTEL_RESOURCE_ATTRIBUTES
-          value: service.name=$(OTEL_SERVICE_NAME),service.namespace=opentelemetry-demo,service.version=2.0.2
+        - name: GOMEMLIMIT
+          value: 60MiB
         - name: OTEL_SDK_DISABLED
           value: $(UPSTREAM_DISTRO_DISABLED)
         envFrom:
         - configMapRef:
             name: swo-config
-        image: ghcr.io/open-feature/flagd:v0.11.1
+        image: ghcr.io/open-feature/flagd:v0.12.9
         imagePullPolicy: IfNotPresent
         name: flagd
         ports:
@@ -1517,9 +1546,13 @@ spec:
           value: otel
         - name: OTEL_EXPORTER_OTLP_ENDPOINT
           value: http://$(OTEL_COLLECTOR_NAME):4318
-        - name: OTEL_RESOURCE_ATTRIBUTES
-          value: service.name=$(OTEL_SERVICE_NAME),service.namespace=opentelemetry-demo,service.version=2.0.2
-        image: ghcr.io/open-telemetry/demo:2.0.2-flagd-ui
+        - name: FLAGD_UI_PORT
+          value: "4000"
+        - name: SECRET_KEY_BASE
+          value: yYrECL4qbNwleYInGJYvVnSkwJuSQJ4ijPTx5tirGUXrbznFIBFVJdPl5t6O9ASw
+        - name: PHX_HOST
+          value: localhost
+        image: ghcr.io/open-telemetry/demo:2.2.0-flagd-ui
         imagePullPolicy: IfNotPresent
         name: flagd-ui
         ports:
@@ -1527,7 +1560,7 @@ spec:
           name: service
         resources:
           limits:
-            memory: 100Mi
+            memory: 250Mi
         volumeMounts:
         - mountPath: /app/data
           name: config-rw
@@ -1556,10 +1589,9 @@ kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: fraud-detection
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: fraud-detection
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: fraud-detection
   name: fraud-detection
 spec:
@@ -1570,10 +1602,12 @@ spec:
       opentelemetry.io/name: fraud-detection
   template:
     metadata:
+      annotations:
+        resource.opentelemetry.io/service.namespace: otel-demo
       labels:
         app.kubernetes.io/component: fraud-detection
-        app.kubernetes.io/instance: opentelemetry-demo
         app.kubernetes.io/name: fraud-detection
+        app.kubernetes.io/version: 2.2.0
         opentelemetry.io/name: fraud-detection
     spec:
       containers:
@@ -1586,6 +1620,10 @@ spec:
           value: flagd
         - name: FLAGD_PORT
           value: "8013"
+        - name: OTEL_INSTRUMENTATION_KAFKA_EXPERIMENTAL_SPAN_ATTRIBUTES
+          value: "true"
+        - name: OTEL_INSTRUMENTATION_MESSAGING_EXPERIMENTAL_RECEIVE_TELEMETRY_ENABLED
+          value: "true"
         - name: SW_APM_SERVICE_TOKEN
           valueFrom:
             secretKeyRef:
@@ -1597,7 +1635,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.0.2-fraud-detection
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-fraud-detection
         imagePullPolicy: IfNotPresent
         name: fraud-detection
         resources:
@@ -1612,17 +1650,16 @@ spec:
         image: busybox:latest
         name: wait-for-kafka
       serviceAccountName: opentelemetry-demo
-      volumes: null
+      volumes: []
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: frontend
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: frontend
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: frontend
   name: frontend
 spec:
@@ -1633,16 +1670,20 @@ spec:
       opentelemetry.io/name: frontend
   template:
     metadata:
+      annotations:
+        resource.opentelemetry.io/service.namespace: otel-demo
       labels:
         app.kubernetes.io/component: frontend
-        app.kubernetes.io/instance: opentelemetry-demo
         app.kubernetes.io/name: frontend
+        app.kubernetes.io/version: 2.2.0
         opentelemetry.io/name: frontend
     spec:
       containers:
       - env:
         - name: FRONTEND_PORT
           value: "8080"
+        - name: PORT
+          value: $(FRONTEND_PORT)
         - name: FRONTEND_ADDR
           value: :8080
         - name: AD_ADDR
@@ -1655,6 +1696,8 @@ spec:
           value: currency:8080
         - name: PRODUCT_CATALOG_ADDR
           value: product-catalog:8080
+        - name: PRODUCT_REVIEWS_ADDR
+          value: product-reviews:3551
         - name: RECOMMENDATION_ADDR
           value: recommendation:8080
         - name: SHIPPING_ADDR
@@ -1663,6 +1706,8 @@ spec:
           value: flagd
         - name: FLAGD_PORT
           value: "8013"
+        - name: ENV_PLATFORM
+          value: kubernetes
         - name: WEB_OTEL_SERVICE_NAME
           value: astronomyshop-frontend-web
         - name: SW_APM_SERVICE_TOKEN
@@ -1676,7 +1721,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.0.2-frontend
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-frontend
         imagePullPolicy: IfNotPresent
         name: frontend
         ports:
@@ -1691,17 +1736,16 @@ spec:
           runAsUser: 1001
         volumeMounts: null
       serviceAccountName: opentelemetry-demo
-      volumes: null
+      volumes: []
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: frontend-proxy
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: frontend-proxy
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: frontend-proxy
   name: frontend-proxy
 spec:
@@ -1712,10 +1756,17 @@ spec:
       opentelemetry.io/name: frontend-proxy
   template:
     metadata:
+      annotations:
+        io.opentelemetry.discovery.metrics/config: |
+          targets:
+            - endpoint: "http://`endpoint`"
+        io.opentelemetry.discovery.metrics/enabled: "true"
+        io.opentelemetry.discovery.metrics/scraper: httpcheck
+        resource.opentelemetry.io/service.namespace: otel-demo
       labels:
         app.kubernetes.io/component: frontend-proxy
-        app.kubernetes.io/instance: opentelemetry-demo
         app.kubernetes.io/name: frontend-proxy
+        app.kubernetes.io/version: 2.2.0
         opentelemetry.io/name: frontend-proxy
     spec:
       containers:
@@ -1728,6 +1779,10 @@ spec:
           value: cumulative
         - name: ENVOY_PORT
           value: "8080"
+        - name: ENVOY_ADDR
+          value: 0.0.0.0
+        - name: ENVOY_ADMIN_PORT
+          value: "10000"
         - name: FLAGD_HOST
           value: flagd
         - name: FLAGD_PORT
@@ -1749,8 +1804,8 @@ spec:
         - name: IMAGE_PROVIDER_PORT
           value: "8081"
         - name: JAEGER_HOST
-          value: jaeger-query
-        - name: JAEGER_PORT
+          value: jaeger
+        - name: JAEGER_UI_PORT
           value: "16686"
         - name: LOCUST_WEB_HOST
           value: load-generator
@@ -1762,14 +1817,12 @@ spec:
           value: "4317"
         - name: OTEL_COLLECTOR_PORT_HTTP
           value: "4318"
-        - name: OTEL_RESOURCE_ATTRIBUTES
-          value: service.name=$(OTEL_SERVICE_NAME),service.namespace=opentelemetry-demo,service.version=2.0.2
         - name: OTEL_SDK_DISABLED
           value: $(UPSTREAM_DISTRO_DISABLED)
         envFrom:
         - configMapRef:
             name: swo-config
-        image: ghcr.io/open-telemetry/demo:2.0.2-frontend-proxy
+        image: ghcr.io/open-telemetry/demo:2.2.0-frontend-proxy
         imagePullPolicy: IfNotPresent
         name: frontend-proxy
         ports:
@@ -1784,17 +1837,16 @@ spec:
           runAsUser: 101
         volumeMounts: null
       serviceAccountName: opentelemetry-demo
-      volumes: null
+      volumes: []
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: image-provider
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: image-provider
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: image-provider
   name: image-provider
 spec:
@@ -1805,10 +1857,18 @@ spec:
       opentelemetry.io/name: image-provider
   template:
     metadata:
+      annotations:
+        io.opentelemetry.discovery.metrics/config: |
+          endpoint: "http://`endpoint`/status"
+          collection_interval: "10s"
+          timeout: "20s"
+        io.opentelemetry.discovery.metrics/enabled: "true"
+        io.opentelemetry.discovery.metrics/scraper: nginx
+        resource.opentelemetry.io/service.namespace: otel-demo
       labels:
         app.kubernetes.io/component: image-provider
-        app.kubernetes.io/instance: opentelemetry-demo
         app.kubernetes.io/name: image-provider
+        app.kubernetes.io/version: 2.2.0
         opentelemetry.io/name: image-provider
     spec:
       containers:
@@ -1825,14 +1885,12 @@ spec:
           value: "4317"
         - name: OTEL_COLLECTOR_HOST
           value: $(OTEL_COLLECTOR_NAME)
-        - name: OTEL_RESOURCE_ATTRIBUTES
-          value: service.name=$(OTEL_SERVICE_NAME),service.namespace=opentelemetry-demo,service.version=2.0.2
         - name: OTEL_SDK_DISABLED
           value: $(UPSTREAM_DISTRO_DISABLED)
         envFrom:
         - configMapRef:
             name: swo-config
-        image: ghcr.io/open-telemetry/demo:2.0.2-image-provider
+        image: ghcr.io/open-telemetry/demo:2.2.0-image-provider
         imagePullPolicy: IfNotPresent
         name: image-provider
         ports:
@@ -1843,17 +1901,16 @@ spec:
             memory: 50Mi
         volumeMounts: null
       serviceAccountName: opentelemetry-demo
-      volumes: null
+      volumes: []
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: kafka
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: kafka
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: kafka
   name: kafka
 spec:
@@ -1864,10 +1921,12 @@ spec:
       opentelemetry.io/name: kafka
   template:
     metadata:
+      annotations:
+        resource.opentelemetry.io/service.namespace: otel-demo
       labels:
         app.kubernetes.io/component: kafka
-        app.kubernetes.io/instance: opentelemetry-demo
         app.kubernetes.io/name: kafka
+        app.kubernetes.io/version: 2.2.0
         opentelemetry.io/name: kafka
     spec:
       containers:
@@ -1876,7 +1935,7 @@ spec:
           value: PLAINTEXT://kafka:9092
         - name: KAFKA_HEAP_OPTS
           value: -Xmx400M -Xms400M
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.0.2-kafka
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-kafka
         imagePullPolicy: IfNotPresent
         name: kafka
         ports:
@@ -1893,17 +1952,70 @@ spec:
           runAsUser: 1000
         volumeMounts: null
       serviceAccountName: opentelemetry-demo
-      volumes: null
+      volumes: []
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: llm
+    app.kubernetes.io/name: llm
+    app.kubernetes.io/part-of: opentelemetry-demo
+    app.kubernetes.io/version: 2.2.0
+    opentelemetry.io/name: llm
+  name: llm
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      opentelemetry.io/name: llm
+  template:
+    metadata:
+      annotations:
+        resource.opentelemetry.io/service.namespace: otel-demo
+      labels:
+        app.kubernetes.io/component: llm
+        app.kubernetes.io/name: llm
+        app.kubernetes.io/version: 2.2.0
+        opentelemetry.io/name: llm
+    spec:
+      containers:
+      - env:
+        - name: OTEL_SERVICE_NAME
+          value: astronomyshop-llm
+        - name: OTEL_COLLECTOR_NAME
+          value: otel-collector
+        - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+          value: cumulative
+        - name: FLAGD_HOST
+          value: flagd
+        - name: FLAGD_PORT
+          value: "8013"
+        - name: OTEL_SDK_DISABLED
+          value: $(UPSTREAM_DISTRO_DISABLED)
+        envFrom:
+        - configMapRef:
+            name: swo-config
+        image: ghcr.io/open-telemetry/demo:2.2.0-llm
+        imagePullPolicy: IfNotPresent
+        name: llm
+        ports:
+        - containerPort: 8000
+          name: service
+        resources: null
+        volumeMounts: null
+      serviceAccountName: opentelemetry-demo
+      volumes: []
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: load-generator
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: load-generator
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: load-generator
   name: load-generator
 spec:
@@ -1914,10 +2026,12 @@ spec:
       opentelemetry.io/name: load-generator
   template:
     metadata:
+      annotations:
+        resource.opentelemetry.io/service.namespace: otel-demo
       labels:
         app.kubernetes.io/component: load-generator
-        app.kubernetes.io/instance: opentelemetry-demo
         app.kubernetes.io/name: load-generator
+        app.kubernetes.io/version: 2.2.0
         opentelemetry.io/name: load-generator
     spec:
       containers:
@@ -1948,18 +2062,18 @@ spec:
           value: python
         - name: FLAGD_HOST
           value: flagd
+        - name: FLAGD_PORT
+          value: "8013"
         - name: FLAGD_OFREP_PORT
           value: "8016"
         - name: OTEL_EXPORTER_OTLP_ENDPOINT
           value: http://$(OTEL_COLLECTOR_NAME):4317
-        - name: OTEL_RESOURCE_ATTRIBUTES
-          value: service.name=$(OTEL_SERVICE_NAME),service.namespace=opentelemetry-demo,service.version=2.0.2
         - name: OTEL_SDK_DISABLED
           value: $(UPSTREAM_DISTRO_DISABLED)
         envFrom:
         - configMapRef:
             name: swo-config
-        image: ghcr.io/open-telemetry/demo:2.0.2-load-generator
+        image: ghcr.io/open-telemetry/demo:2.2.0-load-generator
         imagePullPolicy: IfNotPresent
         name: load-generator
         ports:
@@ -1970,17 +2084,16 @@ spec:
             memory: 1500Mi
         volumeMounts: null
       serviceAccountName: opentelemetry-demo
-      volumes: null
+      volumes: []
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: payment
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: payment
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: payment
   name: payment
 spec:
@@ -1991,10 +2104,12 @@ spec:
       opentelemetry.io/name: payment
   template:
     metadata:
+      annotations:
+        resource.opentelemetry.io/service.namespace: otel-demo
       labels:
         app.kubernetes.io/component: payment
-        app.kubernetes.io/instance: opentelemetry-demo
         app.kubernetes.io/name: payment
+        app.kubernetes.io/version: 2.2.0
         opentelemetry.io/name: payment
     spec:
       containers:
@@ -2007,6 +2122,8 @@ spec:
           value: flagd
         - name: FLAGD_PORT
           value: "8013"
+        - name: IPV6_ENABLED
+          value: "false"
         - name: SW_APM_SERVICE_TOKEN
           valueFrom:
             secretKeyRef:
@@ -2018,7 +2135,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.0.2-payment
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-payment
         imagePullPolicy: IfNotPresent
         name: payment
         ports:
@@ -2026,24 +2143,23 @@ spec:
           name: service
         resources:
           limits:
-            memory: 120Mi
+            memory: 140Mi
         securityContext:
           runAsGroup: 1000
           runAsNonRoot: true
           runAsUser: 1000
         volumeMounts: null
       serviceAccountName: opentelemetry-demo
-      volumes: null
+      volumes: []
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: product-catalog
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: product-catalog
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: product-catalog
   name: product-catalog
 spec:
@@ -2054,22 +2170,30 @@ spec:
       opentelemetry.io/name: product-catalog
   template:
     metadata:
+      annotations:
+        resource.opentelemetry.io/service.namespace: otel-demo
       labels:
         app.kubernetes.io/component: product-catalog
-        app.kubernetes.io/instance: opentelemetry-demo
         app.kubernetes.io/name: product-catalog
+        app.kubernetes.io/version: 2.2.0
         opentelemetry.io/name: product-catalog
     spec:
       containers:
       - env:
+        - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+          value: cumulative
         - name: PRODUCT_CATALOG_PORT
           value: "8080"
-        - name: PRODUCT_CATALOG_RELOAD_INTERVAL
-          value: "10"
         - name: FLAGD_HOST
           value: flagd
         - name: FLAGD_PORT
           value: "8013"
+        - name: GOMEMLIMIT
+          value: 16MiB
+        - name: DB_CONNECTION_STRING
+          value: postgres://otelu:otelp@postgresql/otel?sslmode=disable
+        - name: OTEL_SEMCONV_STABILITY_OPT_IN
+          value: database
         - name: SW_APM_SERVICE_TOKEN
           valueFrom:
             secretKeyRef:
@@ -2081,7 +2205,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.0.2-product-catalog
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-product-catalog
         imagePullPolicy: IfNotPresent
         name: product-catalog
         ports:
@@ -2090,24 +2214,98 @@ spec:
         resources:
           limits:
             memory: 100Mi
-        volumeMounts:
-        - mountPath: /usr/src/app/products
-          name: product-catalog-products
+        volumeMounts: null
       serviceAccountName: opentelemetry-demo
-      volumes:
-      - configMap:
-          name: product-catalog-products
-        name: product-catalog-products
+      volumes: []
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: product-reviews
+    app.kubernetes.io/name: product-reviews
+    app.kubernetes.io/part-of: opentelemetry-demo
+    app.kubernetes.io/version: 2.2.0
+    opentelemetry.io/name: product-reviews
+  name: product-reviews
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      opentelemetry.io/name: product-reviews
+  template:
+    metadata:
+      annotations:
+        resource.opentelemetry.io/service.namespace: otel-demo
+      labels:
+        app.kubernetes.io/component: product-reviews
+        app.kubernetes.io/name: product-reviews
+        app.kubernetes.io/version: 2.2.0
+        opentelemetry.io/name: product-reviews
+    spec:
+      containers:
+      - env:
+        - name: OTEL_SERVICE_NAME
+          value: astronomyshop-productreviews
+        - name: OTEL_COLLECTOR_NAME
+          value: otel-collector
+        - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+          value: cumulative
+        - name: OPENAI_API_KEY
+          value: dummy
+        - name: LLM_MODEL
+          value: astronomy-llm
+        - name: LLM_HOST
+          value: llm
+        - name: LLM_PORT
+          value: "8000"
+        - name: LLM_BASE_URL
+          value: http://$(LLM_HOST):$(LLM_PORT)/v1
+        - name: PRODUCT_REVIEWS_PORT
+          value: "3551"
+        - name: PRODUCT_CATALOG_ADDR
+          value: product-catalog:8080
+        - name: FLAGD_HOST
+          value: flagd
+        - name: FLAGD_PORT
+          value: "8013"
+        - name: DB_CONNECTION_STRING
+          value: host=postgresql user=otelu password=otelp dbname=otel
+        - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
+          value: python
+        - name: OTEL_PYTHON_LOG_CORRELATION
+          value: "true"
+        - name: OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
+          value: "true"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://$(OTEL_COLLECTOR_NAME):4317
+        - name: OTEL_SDK_DISABLED
+          value: $(UPSTREAM_DISTRO_DISABLED)
+        envFrom:
+        - configMapRef:
+            name: swo-config
+        image: ghcr.io/open-telemetry/demo:2.2.0-product-reviews
+        imagePullPolicy: IfNotPresent
+        name: product-reviews
+        ports:
+        - containerPort: 3551
+          name: service
+        resources:
+          limits:
+            memory: 100Mi
+        volumeMounts: null
+      serviceAccountName: opentelemetry-demo
+      volumes: []
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: quote
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: quote
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: quote
   name: quote
 spec:
@@ -2118,10 +2316,12 @@ spec:
       opentelemetry.io/name: quote
   template:
     metadata:
+      annotations:
+        resource.opentelemetry.io/service.namespace: otel-demo
       labels:
         app.kubernetes.io/component: quote
-        app.kubernetes.io/instance: opentelemetry-demo
         app.kubernetes.io/name: quote
+        app.kubernetes.io/version: 2.2.0
         opentelemetry.io/name: quote
     spec:
       containers:
@@ -2132,6 +2332,10 @@ spec:
           value: "8080"
         - name: OTEL_PHP_AUTOLOAD_ENABLED
           value: "true"
+        - name: OTEL_PHP_INTERNAL_METRICS_ENABLED
+          value: "true"
+        - name: IPV6_ENABLED
+          value: "false"
         - name: SW_APM_SERVICE_TOKEN
           valueFrom:
             secretKeyRef:
@@ -2143,7 +2347,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.0.2-quote
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-quote
         imagePullPolicy: IfNotPresent
         name: quote
         ports:
@@ -2158,17 +2362,16 @@ spec:
           runAsUser: 33
         volumeMounts: null
       serviceAccountName: opentelemetry-demo
-      volumes: null
+      volumes: []
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: recommendation
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: recommendation
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: recommendation
   name: recommendation
 spec:
@@ -2179,10 +2382,12 @@ spec:
       opentelemetry.io/name: recommendation
   template:
     metadata:
+      annotations:
+        resource.opentelemetry.io/service.namespace: otel-demo
       labels:
         app.kubernetes.io/component: recommendation
-        app.kubernetes.io/instance: opentelemetry-demo
         app.kubernetes.io/name: recommendation
+        app.kubernetes.io/version: 2.2.0
         opentelemetry.io/name: recommendation
     spec:
       containers:
@@ -2216,7 +2421,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.0.2-recommendation
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-recommendation
         imagePullPolicy: IfNotPresent
         name: recommendation
         ports:
@@ -2227,17 +2432,16 @@ spec:
             memory: 500Mi
         volumeMounts: null
       serviceAccountName: opentelemetry-demo
-      volumes: null
+      volumes: []
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: shipping
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: shipping
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: shipping
   name: shipping
 spec:
@@ -2248,10 +2452,12 @@ spec:
       opentelemetry.io/name: shipping
   template:
     metadata:
+      annotations:
+        resource.opentelemetry.io/service.namespace: otel-demo
       labels:
         app.kubernetes.io/component: shipping
-        app.kubernetes.io/instance: opentelemetry-demo
         app.kubernetes.io/name: shipping
+        app.kubernetes.io/version: 2.2.0
         opentelemetry.io/name: shipping
     spec:
       containers:
@@ -2268,14 +2474,14 @@ spec:
           value: http://quote:8080
         - name: OTEL_EXPORTER_OTLP_ENDPOINT
           value: http://$(OTEL_COLLECTOR_NAME):4317
-        - name: OTEL_RESOURCE_ATTRIBUTES
-          value: service.name=$(OTEL_SERVICE_NAME),service.namespace=opentelemetry-demo,service.version=2.0.2
+        - name: IPV6_ENABLED
+          value: "false"
         - name: OTEL_SDK_DISABLED
           value: $(UPSTREAM_DISTRO_DISABLED)
         envFrom:
         - configMapRef:
             name: swo-config
-        image: ghcr.io/open-telemetry/demo:2.0.2-shipping
+        image: ghcr.io/open-telemetry/demo:2.2.0-shipping
         imagePullPolicy: IfNotPresent
         name: shipping
         ports:
@@ -2286,7 +2492,7 @@ spec:
             memory: 20Mi
         volumeMounts: null
       serviceAccountName: opentelemetry-demo
-      volumes: null
+      volumes: []
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -2296,7 +2502,7 @@ metadata:
     app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: postgresql
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: postgresql
   name: postgresql
 spec:
@@ -2346,9 +2552,6 @@ spec:
       restartPolicy: Always
       volumes:
       - configMap:
-          items:
-          - key: init
-            path: init.sql
           name: postgresql-init
         name: init
       - name: db-data
@@ -2360,10 +2563,9 @@ kind: StatefulSet
 metadata:
   labels:
     app.kubernetes.io/component: valkey-cart
-    app.kubernetes.io/instance: opentelemetry-demo
     app.kubernetes.io/name: valkey-cart
     app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.0.2
+    app.kubernetes.io/version: 2.2.0
     opentelemetry.io/name: valkey-cart
   name: valkey-cart
 spec:
@@ -2374,27 +2576,23 @@ spec:
       opentelemetry.io/name: valkey-cart
   template:
     metadata:
+      annotations:
+        io.opentelemetry.discovery.metrics/config: |
+          username: valkey
+          collection_interval: 10s
+        io.opentelemetry.discovery.metrics/enabled: "true"
+        io.opentelemetry.discovery.metrics/scraper: redis
+        resource.opentelemetry.io/service.namespace: otel-demo
       labels:
         app.kubernetes.io/component: valkey-cart
-        app.kubernetes.io/instance: opentelemetry-demo
         app.kubernetes.io/name: valkey-cart
+        app.kubernetes.io/version: 2.2.0
         opentelemetry.io/name: valkey-cart
     spec:
       containers:
-      - env:
-        - name: OTEL_SERVICE_NAME
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.labels['app.kubernetes.io/component']
-        - name: OTEL_COLLECTOR_NAME
-          value: otel-collector
-        - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
-          value: cumulative
-        - name: OTEL_RESOURCE_ATTRIBUTES
-          value: service.name=$(OTEL_SERVICE_NAME),service.namespace=opentelemetry-demo,service.version=2.0.2
-        image: valkey/valkey:7.2-alpine
-        imagePullPolicy: IfNotPresent
+      - env: []
+        image: valkey/valkey:9.0.1-alpine3.23
+        imagePullPolicy: Always
         name: valkey-cart
         ports:
         - containerPort: 6379
@@ -2436,3 +2634,189 @@ spec:
       resources:
         requests:
           storage: 1Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  labels:
+    app.kubernetes.io/component: database-maintenance
+    app.kubernetes.io/name: postgresql-cleanup
+    app.kubernetes.io/part-of: opentelemetry-demo
+  name: postgresql-cleanup
+  namespace: otel-demo
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/component: database-maintenance
+            app.kubernetes.io/name: postgresql-cleanup
+        spec:
+          containers:
+          - command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "Starting PostgreSQL cleanup job at $(date)"
+
+              # Wait for PostgreSQL to be available
+              until pg_isready -h $PGHOST -p $PGPORT -U $PGUSER; do
+                echo "Waiting for PostgreSQL to be ready..."
+                sleep 2
+              done
+
+              echo "PostgreSQL is ready. Starting cleanup..."
+
+              # Delete data from specified tables
+              echo "Cleaning up 'order' table..."
+              psql -c "DELETE FROM accounting.\"order\";" || echo "Warning: Failed to clean 'order' table or table doesn't exist"
+
+              echo "Cleaning up 'orderitem' table..."
+              psql -c "DELETE FROM accounting.orderitem;" || echo "Warning: Failed to clean 'orderitem' table or table doesn't exist"
+
+              echo "Cleaning up 'shipping' table..."
+              psql -c "DELETE FROM accounting.shipping;" || echo "Warning: Failed to clean 'shipping' table or table doesn't exist"
+
+              # Get row counts to verify cleanup
+              echo "Verifying cleanup results:"
+              psql -c "SELECT 'order' as table_name, COUNT(*) as remaining_rows FROM accounting.\"order\" UNION ALL SELECT 'orderitem', COUNT(*) FROM accounting.orderitem UNION ALL SELECT 'shipping', COUNT(*) FROM accounting.shipping;" || echo "Warning: Could not verify cleanup results"
+
+              echo "PostgreSQL cleanup job completed successfully at $(date)"
+            env:
+            - name: PGHOST
+              value: postgresql
+            - name: PGPORT
+              value: "5432"
+            - name: PGDATABASE
+              value: otel
+            - name: PGUSER
+              value: root
+            - name: PGPASSWORD
+              value: otel
+            image: postgres:17.5
+            name: postgresql-cleanup
+            resources:
+              limits:
+                cpu: 200m
+                memory: 128Mi
+              requests:
+                cpu: 100m
+                memory: 64Mi
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                - ALL
+              readOnlyRootFilesystem: true
+              runAsGroup: 999
+              runAsNonRoot: true
+              runAsUser: 999
+            volumeMounts:
+            - mountPath: /tmp
+              name: tmp
+          restartPolicy: OnFailure
+          volumes:
+          - emptyDir: {}
+            name: tmp
+  schedule: 0 2 * * 0
+  successfulJobsHistoryLimit: 3
+  timeZone: UTC
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/component: agent-collector
+    app.kubernetes.io/instance: opentelemetry-demo
+    app.kubernetes.io/name: opentelemetry-collector
+    app.kubernetes.io/part-of: opentelemetry-collector
+    app.kubernetes.io/version: 0.142.0
+  name: otel-collector-agent
+  namespace: otel-demo
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: opentelemetry-demo
+      app.kubernetes.io/name: opentelemetry-collector
+      component: agent-collector
+  template:
+    metadata:
+      annotations:
+        checksum/config: 3529d73a9719a87dcf6b749bf0a8d37edb9a6a52a9dd9ea3ca2eb8f29af6c5f2
+      labels:
+        app.kubernetes.io/instance: opentelemetry-demo
+        app.kubernetes.io/name: opentelemetry-collector
+        component: agent-collector
+    spec:
+      automountServiceAccountToken: true
+      containers:
+      - args:
+        - --config=/conf/relay.yaml
+        env:
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: GOMEMLIMIT
+          value: 160MiB
+        - name: SW_APM_SERVICE_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: token
+              name: swo-apm
+              optional: false
+        envFrom:
+        - configMapRef:
+            name: swo-config
+        image: otel/opentelemetry-collector-contrib:0.142.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 13133
+        name: opentelemetry-collector
+        ports:
+        - containerPort: 4317
+          hostPort: 4317
+          name: otlp
+          protocol: TCP
+        - containerPort: 4318
+          hostPort: 4318
+          name: otlp-http
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 13133
+        resources:
+          limits:
+            memory: 200Mi
+        securityContext: {}
+        volumeMounts:
+        - mountPath: /conf
+          name: opentelemetry-collector-configmap
+        - mountPath: /hostfs
+          mountPropagation: HostToContainer
+          name: hostfs
+          readOnly: true
+      hostNetwork: false
+      securityContext: {}
+      serviceAccountName: otel-collector
+      volumes:
+      - configMap:
+          items:
+          - key: relay
+            path: relay.yaml
+          name: otel-collector-agent
+        name: opentelemetry-collector-configmap
+      - hostPath:
+          path: /
+        name: hostfs
+  updateStrategy:
+    type: RollingUpdate
