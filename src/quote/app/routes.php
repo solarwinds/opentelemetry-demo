@@ -26,7 +26,7 @@ function calculateQuote($jsonObject): float
             throw new \InvalidArgumentException('numberOfItems not provided');
         }
         $numberOfItems = intval($jsonObject['numberOfItems']);
-		solarwinds_apm_log('calculateQuote', 'info', array('number_of_items' => $numberOfItems));
+        solarwinds_apm_log('calculateQuote', 'info', array('number_of_items' => $numberOfItems));
         $costPerItem = rand(400, 1000)/10;
         $quote = round($costPerItem * $numberOfItems, 2);
 

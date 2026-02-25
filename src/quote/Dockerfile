@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-FROM ghcr.io/mlocati/php-extension-installer:2.7.34 AS installer
+FROM ghcr.io/mlocati/php-extension-installer:2.9.11 AS installer
 
-FROM docker.io/library/composer:2.8.9 AS vendor
+FROM docker.io/library/composer:2.8.12 AS vendor
 
 WORKDIR /tmp/
 
@@ -37,10 +37,9 @@ RUN curl -sS -o /usr/local/bin/solarwinds-apm-php.sh \
 RUN bash /usr/local/bin/solarwinds-apm-php.sh \
     --service-key="00000000-0000-0000-0000-000000000000:astronomyshop-quote"
 
-RUN echo "\nsolarwinds-apm.enable_cli = 1" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
-RUN echo "\nsolarwinds-apm.use_custom_start_trace = 1" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
-RUN echo "\nsolarwinds-apm.enable_profiling = 1" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
-RUN echo "\n" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
+RUN echo "solarwinds-apm.enable_cli = 1" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
+RUN echo "solarwinds-apm.use_custom_start_trace = 1" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
+RUN echo "solarwinds-apm.enable_profiling = 1" >> /usr/local/etc/php/conf.d/solarwinds-apm.ini
 # End of SolarWinds APM PHP agent installation
 
 WORKDIR /var/www

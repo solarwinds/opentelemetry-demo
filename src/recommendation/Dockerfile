@@ -12,6 +12,8 @@ COPY ./src/recommendation/requirements.txt requirements.txt
 RUN python -m venv venv && \
     venv/bin/pip install --no-cache-dir -r requirements.txt
 
+RUN venv/bin/pip install solarwinds-apm
+
 RUN venv/bin/opentelemetry-bootstrap -a install
 
 FROM docker.io/library/python:3.12-alpine3.22
