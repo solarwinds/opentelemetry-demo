@@ -15,6 +15,9 @@ Service implementations, Dockerfiles, and Kubernetes manifests have been adjuste
 to send telemetry data to SolarWinds Observability for full-stack application
 performance monitoring and troubleshooting.
 
+You can explore a live deployment of this demo in the
+[SolarWinds Observability Online Demo](https://demo.na-01.cloud.solarwinds.com/).
+
 ## Prerequisites
 
 Before deploying the demo, you need a
