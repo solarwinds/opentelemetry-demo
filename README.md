@@ -10,7 +10,7 @@ a microservice-based distributed system that illustrates the implementation of
 OpenTelemetry in a near real-world environment.
 
 This fork demonstrates how the Astronomy Shop can be monitored using
-[SolarWinds Observability](https://www.solarwinds.com/solutions/solarwinds-observability/apm).
+[SolarWinds Observability](https://www.solarwinds.com/solutions/solarwinds-observability/).
 Service implementations, Dockerfiles, and Kubernetes manifests have been adjusted
 to send telemetry data to SolarWinds Observability for full-stack application
 performance monitoring and troubleshooting.
@@ -122,14 +122,7 @@ For general documentation on the upstream demo, see the
 [OpenTelemetry Demo Documentation](https://opentelemetry.io/docs/demo/).
 
 For SolarWinds Observability, see the
-[SolarWinds documentation](https://documentation.solarwinds.com/).
-
-## Upstream
-
-This fork is based on the
-[open-telemetry/opentelemetry-demo](https://github.com/open-telemetry/opentelemetry-demo)
-project. See the upstream repository for the full list of
-[contributors](https://github.com/open-telemetry/opentelemetry-demo/graphs/contributors).
+[SolarWinds documentation](https://documentation.solarwinds.com/en/success_center/observability/content/observability_documentation.htm).
 
 ## License
 
