@@ -1,160 +1,129 @@
 <!-- markdownlint-disable-next-line -->
-# <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" alt="OTel logo" width="45"> OpenTelemetry Demo
+# <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" alt="OTel logo" width="45"> OpenTelemetry Demo with SolarWinds Observability
 
-[![Slack](https://img.shields.io/badge/slack-@cncf/otel/demo-brightgreen.svg?logo=slack)](https://cloud-native.slack.com/archives/C03B4CWV4DA)
-[![Version](https://img.shields.io/github/v/release/open-telemetry/opentelemetry-demo?color=blueviolet)](https://github.com/open-telemetry/opentelemetry-demo/releases)
-[![Commits](https://img.shields.io/github/commits-since/open-telemetry/opentelemetry-demo/latest?color=ff69b4&include_prereleases)](https://github.com/open-telemetry/opentelemetry-demo/graphs/commit-activity)
-[![Downloads](https://img.shields.io/docker/pulls/otel/demo)](https://hub.docker.com/r/otel/demo)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?color=red)](https://github.com/open-telemetry/opentelemetry-demo/blob/main/LICENSE)
-[![Integration Tests](https://github.com/open-telemetry/opentelemetry-demo/actions/workflows/run-integration-tests.yml/badge.svg)](https://github.com/open-telemetry/opentelemetry-demo/actions/workflows/run-integration-tests.yml)
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/opentelemetry-demo)](https://artifacthub.io/packages/helm/opentelemetry-helm/opentelemetry-demo)
-[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B162%2Fgithub.com%2Fopen-telemetry%2Fopentelemetry-demo.svg?type=shield&issueType=license)](https://app.fossa.com/projects/custom%2B162%2Fgithub.com%2Fopen-telemetry%2Fopentelemetry-demo?ref=badge_shield&issueType=license)
-[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B162%2Fgithub.com%2Fopen-telemetry%2Fopentelemetry-demo.svg?type=shield&issueType=security)](https://app.fossa.com/projects/custom%2B162%2Fgithub.com%2Fopen-telemetry%2Fopentelemetry-demo?ref=badge_shield&issueType=security)
-[![OpenSSF Scorecard for opentelemetry-demo](https://api.scorecard.dev/projects/github.com/open-telemetry/opentelemetry-demo/badge)](https://scorecard.dev/viewer/?uri=github.com/open-telemetry/opentelemetry-demo)
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/9247/badge)](https://www.bestpractices.dev/en/projects/9247)
 
-## Welcome to the OpenTelemetry Astronomy Shop Demo
+## About
 
-This repository contains the OpenTelemetry Astronomy Shop, a microservice-based
-distributed system intended to illustrate the implementation of OpenTelemetry in
-a near real-world environment.
+This repository is a fork of the [OpenTelemetry Astronomy Shop Demo](https://github.com/open-telemetry/opentelemetry-demo),
+a microservice-based distributed system that illustrates the implementation of
+OpenTelemetry in a near real-world environment.
 
-Our goals are threefold:
+This fork demonstrates how the Astronomy Shop can be monitored using
+[SolarWinds Observability](https://www.solarwinds.com/solutions/solarwinds-observability/).
+Service implementations, Dockerfiles, and Kubernetes manifests have been adjusted
+to send telemetry data to SolarWinds Observability for full-stack application
+performance monitoring and troubleshooting.
 
-- Provide a realistic example of a distributed system that can be used to
-  demonstrate OpenTelemetry instrumentation and observability.
-- Build a base for vendors, tooling authors, and others to extend and
-  demonstrate their OpenTelemetry integrations.
-- Create a living example for OpenTelemetry contributors to use for testing new
-  versions of the API, SDK, and other components or enhancements.
+You can explore a live deployment of this demo in the
+[SolarWinds Observability Online Demo](https://demo.na-01.cloud.solarwinds.com/).
 
-We've already made [huge
-progress](https://github.com/open-telemetry/opentelemetry-demo/blob/main/CHANGELOG.md),
-and development is ongoing. We hope to represent the full feature set of
-OpenTelemetry across its languages in the future.
+## Prerequisites
 
-If you'd like to help (**which we would love**), check out our [contributing
-guidance](./CONTRIBUTING.md).
+Before deploying the demo, you need a
+[SolarWinds Observability SaaS](https://www.solarwinds.com/solarwinds-observability)
+account and the following configuration values:
 
-If you'd like to extend this demo or maintain a fork of it, read our
-[fork guidance](https://opentelemetry.io/docs/demo/forking/).
+1. **Ingestion API token** — create one in SolarWinds Observability SaaS under
+   *Settings > API Tokens* (select the **Ingestion** token type).
+   See [API Tokens](https://documentation.solarwinds.com/en/success_center/observability/content/settings/api-tokens.htm)
+   for details.
 
-## Quick start
+2. **Data center endpoints** — endpoint URIs depend on the data center your
+   organization uses (visible in your SWO URL, e.g. `na-01`, `na-02`, `eu-01`,
+   `ap-01`). Replace `xx-yy` in the URIs below with your data center identifier.
+   See [Data centers and endpoint URIs](https://documentation.solarwinds.com/en/success_center/observability/content/system_requirements/endpoints.htm)
+   for the full list.
 
-You can be up and running with the demo in a few minutes. Check out the docs for
-your preferred deployment method:
+   | Variable | Value | Purpose |
+   |---|---|---|
+   | `SW_APM_SERVICE_TOKEN` | Your ingestion API token | Authenticates telemetry sent to SWO |
+   | `SW_APM_COLLECTOR` | `apm.collector.xx-yy.cloud.solarwinds.com` | APM collector endpoint |
+   | `SW_OTEL_ADDRESS` | `otel.collector.xx-yy.cloud.solarwinds.com` | OTLP telemetry data ingestion endpoint (port 443) |
 
-- [Docker](https://opentelemetry.io/docs/demo/docker_deployment/)
-- [Kubernetes](https://opentelemetry.io/docs/demo/kubernetes_deployment/)
+For information on how to add individual services to monitoring, see
+[Add a service](https://documentation.solarwinds.com/en/success_center/observability/content/configure/configure-services.htm).
+
+## Deploy with Docker
+
+1. Clone the repository:
+
+   ```shell
+   git clone https://github.com/solarwinds/opentelemetry-demo.git
+   cd opentelemetry-demo
+   ```
+
+2. Set the SolarWinds environment variables in the `.env` file:
+
+   ```dotenv
+   # SolarWinds Observability
+   SW_APM_SERVICE_TOKEN=<your_ingestion_token>
+   SW_APM_COLLECTOR=apm.collector.xx-yy.cloud.solarwinds.com
+   SW_OTEL_ADDRESS=otel.collector.xx-yy.cloud.solarwinds.com
+   ```
+
+   > **Important:** Replace `<your_ingestion_token>` with the token created in
+   > the [Prerequisites](#prerequisites) and `xx-yy` with your data center
+   > identifier.
+
+3. Start the demo:
+
+   ```shell
+   docker compose up -d
+   ```
+
+4. Once running, the web store is available at <http://localhost:8080/>.
+
+## Deploy with Kubernetes
+
+1. Create the target namespace:
+
+   ```shell
+   kubectl create namespace otel-demo
+   ```
+
+2. Create the secret with your SWO ingestion token:
+
+   ```shell
+   kubectl create secret generic swo-apm \
+     --from-literal=token=<your_ingestion_token> \
+     -n otel-demo
+   ```
+
+3. Review and update the `swo-config` ConfigMap inside
+   `kubernetes/opentelemetry-demo.yaml` with the endpoints matching your data
+   center (replace `na-01` if needed):
+
+   ```yaml
+   apiVersion: v1
+   kind: ConfigMap
+   metadata:
+     name: swo-config
+   data:
+     OTEL_ADDRESS: otel.collector.na-01.cloud.solarwinds.com:443
+     SW_APM_COLLECTOR: apm.collector.na-01.cloud.solarwinds.com
+   ```
+
+4. Apply the manifests:
+
+   ```shell
+   kubectl apply -f kubernetes/opentelemetry-demo.yaml -n otel-demo
+   ```
+
+See [kubernetes/README.md](kubernetes/README.md) for additional Kubernetes
+configuration options.
+
+> **Note:** For configuring Kubernetes monitoring in SolarWinds Observability,
+> see [Kubernetes monitoring](https://documentation.solarwinds.com/en/success_center/observability/content/intro/kubernetes.htm).
 
 ## Documentation
 
-For detailed documentation, see [Demo Documentation][docs]. If you're curious
-about a specific feature, the [docs landing page][docs] can point you in the
-right direction.
+For general documentation on the upstream demo, see the
+[OpenTelemetry Demo Documentation](https://opentelemetry.io/docs/demo/).
 
-## Demos featuring the Astronomy Shop
+For SolarWinds Observability, see the
+[SolarWinds documentation](https://documentation.solarwinds.com/en/success_center/observability/content/observability_documentation.htm).
 
-We welcome any vendor to fork the project to demonstrate their services and
-adding a link below. The community is committed to maintaining the project and
-keeping it up to date for you.
+## License
 
-|                           |                |                                  |
-|---------------------------|----------------|----------------------------------|
-| [AlibabaCloud LogService] | [Google Cloud] | [Parseable]                      |
-| [Apache Doris]            | [Grafana Labs] | [Sentry]                         |
-| [AppDynamics]             | [Guance]       | [ServiceNow Cloud Observability] |
-| [Aspecto]                 | [Honeycomb.io] | [SigNoz]                         |
-| [Axiom]                   | [Instana]      | [Splunk]                         |
-| [Axoflow]                 | [Kloudfuse]    | [Sumo Logic]                     |
-| [Azure Data Explorer]     | [Last9]        | [TelemetryHub]                   |
-| [Causely]                 | [Liatrio]      | [Teletrace]                      |
-| [ClickStack]              | [Logz.io]      | [Tinybird]                       |
-| [Coralogix]               | [New Relic]    | [Tracetest]                      |
-| [Dash0]                   | [Oodle]        | [Uptrace]                        |
-| [Datadog]                 | [OpenObserve]  | [VictoriaMetrics]                |
-| [Dynatrace]               | [OpenSearch]   |                                  |
-| [Elastic]                 | [Oracle]       |                                  |
-
-## Contributing
-
-To get involved with the project see our [CONTRIBUTING](CONTRIBUTING.md)
-documentation. Our [SIG Calls](CONTRIBUTING.md#join-a-sig-call) are every other
-Wednesday at 8:30 AM PST and anyone is welcome.
-
-### Maintainers
-
-- [Juliano Costa](https://github.com/julianocosta89), Datadog
-- [Mikko Viitanen](https://github.com/mviitane), Dynatrace
-- [Pierre Tessier](https://github.com/puckpuck), Honeycomb
-- [Roger Coll](https://github.com/rogercoll), Elastic
-
-For more information about the maintainer role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#maintainer).
-
-### Approvers
-
-- [Cedric Ziel](https://github.com/cedricziel), Grafana Labs
-- [Shenoy Pratik](https://github.com/ps48), AWS OpenSearch
-
-For more information about the approver role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#approver).
-
-### Emeritus
-
-- [Austin Parker](https://github.com/austinlparker)
-- [Carter Socha](https://github.com/cartersocha)
-- [Michael Maxwell](https://github.com/mic-max)
-- [Morgan McLean](https://github.com/mtwo)
-- [Penghan Wang](https://github.com/wph95)
-- [Reiley Yang](https://github.com/reyang)
-- [Ziqi Zhao](https://github.com/fatsheep9146)
-
-For more information about the emeritus role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#emeritus-maintainerapprovertriager).
-
-### Thanks to all the people who have contributed
-
-[![contributors](https://contributors-img.web.app/image?repo=open-telemetry/opentelemetry-demo)](https://github.com/open-telemetry/opentelemetry-demo/graphs/contributors)
-
-[docs]: https://opentelemetry.io/docs/demo/
-
-<!-- Links for Demos featuring the Astronomy Shop section -->
-
-[AlibabaCloud LogService]: https://github.com/aliyun-sls/opentelemetry-demo
-[AppDynamics]: https://community.splunk.com/t5/AppDynamics-Knowledge-Base/How-to-observe-Kubernetes-deployment-of-OpenTelemetry-demo-app/ta-p/741454
-[Apache Doris]: https://github.com/apache/doris-opentelemetry-demo
-[Aspecto]: https://github.com/aspecto-io/opentelemetry-demo
-[Axiom]: https://play.axiom.co/axiom-play-qf1k/dashboards/otel.traces.otel-demo-traces
-[Axoflow]: https://axoflow.com/opentelemetry-support-in-more-detail-in-axosyslog-and-syslog-ng/
-[Azure Data Explorer]: https://github.com/Azure/Azure-kusto-opentelemetry-demo
-[Causely]: https://github.com/causely-oss/otel-demo
-[ClickStack]: https://github.com/ClickHouse/opentelemetry-demo
-[Coralogix]: https://coralogix.com/blog/configure-otel-demo-send-telemetry-data-coralogix
-[Dash0]: https://github.com/dash0hq/opentelemetry-demo
-[Datadog]: https://docs.datadoghq.com/opentelemetry/guide/otel_demo_to_datadog
-[Dynatrace]: https://www.dynatrace.com/news/blog/opentelemetry-demo-application-with-dynatrace/
-[Elastic]: https://github.com/elastic/opentelemetry-demo
-[Google Cloud]: https://github.com/GoogleCloudPlatform/opentelemetry-demo
-[Grafana Labs]: https://github.com/grafana/opentelemetry-demo
-[Guance]: https://github.com/GuanceCloud/opentelemetry-demo
-[Honeycomb.io]: https://github.com/honeycombio/opentelemetry-demo
-[Instana]: https://github.com/instana/opentelemetry-demo
-[Kloudfuse]: https://github.com/kloudfuse/opentelemetry-demo
-[Last9]: https://last9.io/docs/integrations-opentelemetry-demo/
-[Liatrio]: https://github.com/liatrio/opentelemetry-demo
-[Logz.io]: https://logz.io/learn/how-to-run-opentelemetry-demo-with-logz-io/
-[New Relic]: https://github.com/newrelic/opentelemetry-demo
-[Oodle]: https://blog.oodle.ai/meet-oodle-unified-and-ai-native-observability/
-[OpenSearch]: https://github.com/opensearch-project/opentelemetry-demo
-[OpenObserve]: https://openobserve.ai/blog/opentelemetry-astronomy-shop-demo/
-[Oracle]: https://github.com/oracle-quickstart/oci-o11y-solutions/blob/main/knowledge-content/opentelemetry-demo
-[Parseable]: https://www.parseable.com/blog/open-telemetry-demo-with-parseable-a-complete-observability-setup
-[Sentry]: https://github.com/getsentry/opentelemetry-demo
-[ServiceNow Cloud Observability]: https://docs.lightstep.com/otel/quick-start-operator#send-data-from-the-opentelemetry-demo
-[SigNoz]: https://signoz.io/blog/opentelemetry-demo/
-[Splunk]: https://github.com/signalfx/opentelemetry-demo
-[Sumo Logic]: https://www.sumologic.com/blog/common-opentelemetry-demo-application/
-[TelemetryHub]: https://github.com/TelemetryHub/opentelemetry-demo/tree/telemetryhub-backend
-[Teletrace]: https://github.com/teletrace/opentelemetry-demo
-[Tinybird]: https://github.com/tinybirdco/opentelemetry-demo
-[Tracetest]: https://github.com/kubeshop/opentelemetry-demo
-[Uptrace]: https://github.com/uptrace/uptrace/tree/master/example/opentelemetry-demo
-[VictoriaMetrics]: https://github.com/VictoriaMetrics-Community/opentelemetry-demo
+This project is licensed under the Apache 2.0 License — see the [LICENSE](LICENSE) file for details.
