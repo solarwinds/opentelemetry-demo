@@ -1105,7 +1105,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-accounting
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.0.0-accounting
         imagePullPolicy: IfNotPresent
         name: accounting
         resources:
@@ -1169,7 +1169,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-ad
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.0.0-ad
         imagePullPolicy: IfNotPresent
         name: ad
         ports:
@@ -1241,7 +1241,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-cart
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.0.0-cart
         imagePullPolicy: IfNotPresent
         name: cart
         ports:
@@ -1325,7 +1325,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-checkout
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.0.0-checkout
         imagePullPolicy: IfNotPresent
         name: checkout
         ports:
@@ -1392,7 +1392,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: ghcr.io/open-telemetry/demo:2.2.0-currency
+        image: ghcr.io/open-telemetry/demo:3.0.0-currency
         imagePullPolicy: IfNotPresent
         name: currency
         ports:
@@ -1454,7 +1454,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-email
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.0.0-email
         imagePullPolicy: IfNotPresent
         name: email
         ports:
@@ -1521,7 +1521,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: ghcr.io/open-feature/flagd:v0.12.9
+        image: ghcr.io/open-feature/flagd:v0.16.0
         imagePullPolicy: IfNotPresent
         name: flagd
         ports:
@@ -1552,7 +1552,7 @@ spec:
           value: yYrECL4qbNwleYInGJYvVnSkwJuSQJ4ijPTx5tirGUXrbznFIBFVJdPl5t6O9ASw
         - name: PHX_HOST
           value: localhost
-        image: ghcr.io/open-telemetry/demo:2.2.0-flagd-ui
+        image: ghcr.io/open-telemetry/demo:3.0.0-flagd-ui
         imagePullPolicy: IfNotPresent
         name: flagd-ui
         ports:
@@ -1635,7 +1635,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-fraud-detection
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.0.0-fraud-detection
         imagePullPolicy: IfNotPresent
         name: fraud-detection
         resources:
@@ -1721,7 +1721,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-frontend
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.0.0-frontend
         imagePullPolicy: IfNotPresent
         name: frontend
         ports:
@@ -1807,6 +1807,22 @@ spec:
           value: jaeger
         - name: JAEGER_UI_PORT
           value: "16686"
+        - name: CHATBOT_HOST
+          value: chatbot
+        - name: CHATBOT_PORT
+          value: "7860"
+        - name: OPAMP_SERVER_HOST
+          value: opamp-server
+        - name: OPAMP_SERVER_UI_PORT
+          value: "4321"
+        - name: TELEMETRY_DOCS_HOST
+          value: telemetry-docs
+        - name: TELEMETRY_DOCS_PORT
+          value: "8000"
+        - name: FIREPIT_HOST
+          value: firepit
+        - name: FIREPIT_PORT
+          value: "8080"
         - name: LOCUST_WEB_HOST
           value: load-generator
         - name: LOCUST_WEB_PORT
@@ -1822,7 +1838,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: ghcr.io/open-telemetry/demo:2.2.0-frontend-proxy
+        image: ghcr.io/open-telemetry/demo:3.0.0-frontend-proxy
         imagePullPolicy: IfNotPresent
         name: frontend-proxy
         ports:
@@ -1890,7 +1906,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: ghcr.io/open-telemetry/demo:2.2.0-image-provider
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.0.0-image-provider
         imagePullPolicy: IfNotPresent
         name: image-provider
         ports:
@@ -1935,7 +1951,7 @@ spec:
           value: PLAINTEXT://kafka:9092
         - name: KAFKA_HEAP_OPTS
           value: -Xmx400M -Xms400M
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-kafka
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.0.0-kafka
         imagePullPolicy: IfNotPresent
         name: kafka
         ports:
@@ -2073,7 +2089,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: ghcr.io/open-telemetry/demo:2.2.0-load-generator
+        image: ghcr.io/open-telemetry/demo:3.0.0-load-generator
         imagePullPolicy: IfNotPresent
         name: load-generator
         ports:
@@ -2114,6 +2130,12 @@ spec:
     spec:
       containers:
       - env:
+        - name: OTEL_SERVICE_NAME
+          value: astronomyshop-payment
+        - name: OTEL_COLLECTOR_NAME
+          value: otel-collector
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://$(OTEL_COLLECTOR_NAME):4318
         - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
           value: cumulative
         - name: PAYMENT_PORT
@@ -2135,7 +2157,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-payment
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.0.0-payment
         imagePullPolicy: IfNotPresent
         name: payment
         ports:
@@ -2205,7 +2227,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-product-catalog
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.0.0-product-catalog
         imagePullPolicy: IfNotPresent
         name: product-catalog
         ports:
@@ -2326,6 +2348,12 @@ spec:
     spec:
       containers:
       - env:
+        - name: OTEL_SERVICE_NAME
+          value: astronomyshop-quote
+        - name: OTEL_COLLECTOR_NAME
+          value: otel-collector
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://$(OTEL_COLLECTOR_NAME):4318
         - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
           value: cumulative
         - name: QUOTE_PORT
@@ -2347,7 +2375,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-quote
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.0.0-quote
         imagePullPolicy: IfNotPresent
         name: quote
         ports:
@@ -2392,6 +2420,12 @@ spec:
     spec:
       containers:
       - env:
+        - name: OTEL_COLLECTOR_NAME
+          value: otel-collector
+        - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
+          value: http://$(OTEL_COLLECTOR_NAME):4317
+        - name: OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
+          value: http://$(OTEL_COLLECTOR_NAME):4317
         - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
           value: cumulative
         - name: RECOMMENDATION_PORT
@@ -2421,7 +2455,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-recommendation
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.0.0-recommendation
         imagePullPolicy: IfNotPresent
         name: recommendation
         ports:
@@ -2472,6 +2506,10 @@ spec:
           value: "8080"
         - name: QUOTE_ADDR
           value: http://quote:8080
+        - name: FLAGD_HOST
+          value: flagd
+        - name: FLAGD_PORT
+          value: "8013"
         - name: OTEL_EXPORTER_OTLP_ENDPOINT
           value: http://$(OTEL_COLLECTOR_NAME):4317
         - name: IPV6_ENABLED
@@ -2481,7 +2519,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: ghcr.io/open-telemetry/demo:2.2.0-shipping
+        image: ghcr.io/open-telemetry/demo:3.0.0-shipping
         imagePullPolicy: IfNotPresent
         name: shipping
         ports:
