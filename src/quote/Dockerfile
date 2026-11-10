@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-FROM ghcr.io/mlocati/php-extension-installer:2.9.11 AS installer
+FROM ghcr.io/mlocati/php-extension-installer:2.11.3@sha256:bfd14d8244f8fe22f40d5f0483c11d1b6dd5c31b801ef4238854ba78e65d5593 AS installer
 
-FROM docker.io/library/composer:2.8.12 AS vendor
+FROM docker.io/library/composer:2.10.1@sha256:41959f55087549989efcdfe953977b64e98e07ca0d7532d7e4b7fe1a90cc4159 AS vendor
 
 WORKDIR /tmp/
 
@@ -18,11 +18,23 @@ RUN composer install \
     --no-dev \
     --prefer-dist
 
-FROM docker.io/library/php:8.4-cli-alpine3.22
+FROM docker.io/library/php:8.5.12-cli-alpine3.23@sha256:21b15e527ce55b41a2beb0b4d31868a9a3fd37b8c5f094e4c8f5b7bbac017129
 
 COPY --from=installer /usr/bin/install-php-extensions /usr/local/bin/
 
-RUN install-php-extensions opcache pcntl protobuf opentelemetry
+RUN install-php-extensions opcache pcntl
+
+# PEAR's own downloader gets truncated behind TLS-inspecting proxies; curl detects that and retries.
+RUN set -eux; \
+    apk add --no-cache --virtual .build-deps $PHPIZE_DEPS; \
+    for m in protobuf opentelemetry; do \
+        v=$(curl -fsS --retry 10 --retry-all-errors https://pecl.php.net/rest/r/$m/stable.txt); \
+        curl -fsS --retry 10 --retry-all-errors -o /tmp/$m.tgz https://pecl.php.net/get/$m-$v.tgz; \
+        printf '\n' | pecl install /tmp/$m.tgz; \
+        docker-php-ext-enable $m; \
+    done; \
+    rm -f /tmp/*.tgz; \
+    apk del .build-deps
 
 # Install bash, dos2unix, and libstdc++ for SolarWinds APM installation
 RUN apk add --no-cache bash dos2unix libstdc++

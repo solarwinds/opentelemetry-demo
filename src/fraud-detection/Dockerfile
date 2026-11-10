@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-FROM --platform=${BUILDPLATFORM} gradle:8-jdk17 AS builder
+FROM --platform=${BUILDPLATFORM} docker.io/library/gradle:9.5.1-jdk17@sha256:dda01f5161b21d12403b978e3c020478da9d85c2d4c0c76aeca7df7c83eb6c53 AS builder
 
 WORKDIR /usr/src/app/
 
@@ -13,7 +13,7 @@ RUN gradle shadowJar
 
 # -----------------------------------------------------------------------------
 
-FROM gcr.io/distroless/java17-debian12:nonroot
+FROM gcr.io/distroless/java17-debian12:nonroot@sha256:06484c2a9dcc9070aeafbc0fe752cb9f73bc0cea5c311f6a516e9010061998ad
 
 ARG OTEL_JAVA_AGENT_VERSION
 
@@ -21,7 +21,7 @@ WORKDIR /usr/src/app/
 
 ADD --chmod=644 https://agent-binaries.cloud.solarwinds.com/apm/java/latest/solarwinds-apm-agent.jar /usr/src/app/solarwinds-apm-agent.jar
 
-ENV JAVA_TOOL_OPTIONS=-javaagent:/usr/src/app/solarwinds-apm-agent.jar
+ENV JAVA_TOOL_OPTIONS="-javaagent:/usr/src/app/solarwinds-apm-agent.jar -Xmx180m"
 
 COPY --from=builder /usr/src/app/build/libs/fraud-detection-1.0-all.jar fraud-detection-1.0-all.jar
 

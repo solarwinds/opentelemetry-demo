@@ -3,3 +3,7 @@
 * text=auto
 
 gradlew text eol=lf
+
+# Elixir release boot script must stay LF so it is exec'able in Linux containers
+src/flagd-ui/rel/overlays/bin/server text eol=lf
+src/flagd-ui/rel/overlays/bin/server.bat text eol=crlf

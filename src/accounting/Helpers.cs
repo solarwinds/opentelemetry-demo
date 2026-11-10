@@ -9,6 +9,9 @@ namespace Accounting
     {
         private static List<string> RelevantPrefixes = ["DOTNET_", "CORECLR_", "OTEL_", "KAFKA_"];
 
+        // The SWO agent injects OTEL_EXPORTER_OTLP_HEADERS with the ingestion token at runtime.
+        private static readonly string[] SensitiveKeyParts = ["HEADERS", "TOKEN", "KEY", "SECRET", "PASSWORD"];
+
         public static IEnumerable<DictionaryEntry> FilterRelevant(this IDictionary envs)
         {
             foreach (DictionaryEntry env in envs)
@@ -27,7 +30,9 @@ namespace Accounting
         {
             foreach (var env in envs.OrderBy(x => x.Key))
             {
-                Console.WriteLine(env);
+                var key = env.Key.ToString() ?? string.Empty;
+                var sensitive = SensitiveKeyParts.Any(p => key.Contains(p, StringComparison.OrdinalIgnoreCase));
+                Console.WriteLine(sensitive ? $"[{key}, <redacted>]" : env.ToString());
             }
         }
     }
