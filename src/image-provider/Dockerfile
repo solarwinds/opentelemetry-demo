@@ -1,7 +1,10 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-FROM docker.io/nginxinc/nginx-unprivileged:1.29.3-alpine3.22-otel@sha256:208c0b691a676e6ad05fb7737852d1c307baf5903c8c4552c7ce5b60e36c40e6
+FROM docker.io/library/nginx:1.30.7-alpine3.24-otel@sha256:a05474d618c6a5da1081380cb54728f53743bc295b04f6dc5378a6282c90d190
+
+RUN chown -R 101:0 /etc/nginx /var/cache/nginx \
+    && chmod -R g+w /etc/nginx /var/cache/nginx
 
 USER 101
 
