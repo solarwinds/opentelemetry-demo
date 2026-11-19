@@ -170,18 +170,155 @@ data:
     {
       "$schema": "https://flagd.dev/schema/v0/flags.json",
       "flags": {
-        "llmInaccurateResponse": {
+        "adFailure": {
           "defaultVariant": "off",
-          "description": "LLM returns an inaccurate product summary for product ID L9ECAV7KIM",
+          "description": "Fail ad service",
           "state": "ENABLED",
           "variants": {
             "off": false,
             "on": true
           }
         },
-        "llmRateLimitError": {
+        "adHighCpu": {
           "defaultVariant": "off",
-          "description": "LLM intermittently returns a rate limit error",
+          "description": "Triggers high cpu load in the ad service",
+          "state": "ENABLED",
+          "variants": {
+            "off": false,
+            "on": true
+          }
+        },
+        "adManualGc": {
+          "defaultVariant": "off",
+          "description": "Triggers full manual garbage collections in the ad service",
+          "state": "ENABLED",
+          "variants": {
+            "off": false,
+            "on": true
+          }
+        },
+        "aiRunawayAgent": {
+          "defaultVariant": "off",
+          "description": "forces the agent to keep looping tool calls until it hits its recursion limit",
+          "state": "ENABLED",
+          "variants": {
+            "off": 0,
+            "on": 20
+          }
+        },
+        "aiSlowResponse": {
+          "defaultVariant": "off",
+          "description": "slow LLM responses in the agent service",
+          "state": "ENABLED",
+          "variants": {
+            "10sec": 10000,
+            "5sec": 5000,
+            "off": 0
+          }
+        },
+        "cartFailure": {
+          "defaultVariant": "off",
+          "description": "Fail cart service n% of the time",
+          "state": "ENABLED",
+          "variants": {
+            "10%": 0.1,
+            "100%": 1,
+            "25%": 0.25,
+            "50%": 0.5,
+            "75%": 0.75,
+            "90%": 0.9,
+            "off": 0
+          }
+        },
+        "emailMemoryLeak": {
+          "defaultVariant": "off",
+          "description": "Memory leak in the email service.",
+          "state": "ENABLED",
+          "variants": {
+            "10000x": 10000,
+            "1000x": 1000,
+            "100x": 100,
+            "10x": 10,
+            "1x": 1,
+            "off": 0
+          }
+        },
+        "emitRawPii": {
+          "defaultVariant": "off",
+          "description": "Emit raw PII attributes (user.email, demo.payment.card_number, demo.payment.card_cvv) from checkout and payment for the collector redaction example. Not a failure scenario -- controls PII emission, independent of collector-side redaction which always runs.",
+          "metadata": {
+            "schedulable": false
+          },
+          "state": "ENABLED",
+          "variants": {
+            "off": false,
+            "on": true
+          }
+        },
+        "failedReadinessProbe": {
+          "defaultVariant": "off",
+          "description": "readiness probe failure for cart service",
+          "state": "ENABLED",
+          "variants": {
+            "off": false,
+            "on": true
+          }
+        },
+        "imageSlowLoad": {
+          "defaultVariant": "off",
+          "description": "slow loading images in the frontend",
+          "state": "ENABLED",
+          "variants": {
+            "10sec": 10000,
+            "5sec": 5000,
+            "off": 0
+          }
+        },
+        "intlShippingSlowdown": {
+          "defaultVariant": "off",
+          "description": "Delays international shipping responses to simulate overseas shipping delay",
+          "state": "ENABLED",
+          "variants": {
+            "10sec": 10,
+            "5sec": 5,
+            "off": 0
+          }
+        },
+        "kafkaQueueProblems": {
+          "defaultVariant": "off",
+          "description": "Overloads Kafka queue while simultaneously introducing a consumer side delay leading to a lag spike",
+          "state": "ENABLED",
+          "variants": {
+            "off": 0,
+            "on": 100
+          }
+        },
+        "loadGeneratorFloodHomepage": {
+          "defaultVariant": "off",
+          "description": "Flood the frontend with a large amount of requests.",
+          "state": "ENABLED",
+          "variants": {
+            "off": 0,
+            "on": 100
+          }
+        },
+        "paymentFailure": {
+          "defaultVariant": "off",
+          "description": "Fail payment service charge requests n%",
+          "state": "ENABLED",
+          "variants": {
+            "10%": 0.1,
+            "100%": 1,
+            "25%": 0.25,
+            "50%": 0.5,
+            "75%": 0.75,
+            "90%": 0.95,
+            "off": 0
+          }
+        },
+        "paymentUnreachable": {
+          "defaultVariant": "off",
+          "description": "Payment service is unavailable",
           "state": "ENABLED",
           "variants": {
             "off": false,
@@ -189,131 +326,45 @@ data:
           }
         },
         "productCatalogFailure": {
+          "defaultVariant": "off",
           "description": "Fail product catalog service on a specific product",
           "state": "ENABLED",
-          "variants": {
-            "on": true,
-            "off": false
+          "targeting": {
+            "if": [
+              {
+                "==": [
+                  {
+                    "var": "product_id"
+                  },
+                  "OLJCESPC7Z"
+                ]
+              },
+              "off",
+              "off"
+            ]
           },
-          "defaultVariant": "off"
+          "variants": {
+            "off": false,
+            "on": true
+          }
+        },
+        "productCatalogLockContention": {
+          "defaultVariant": "off",
+          "description": "Trigger lock contention on the product catalog database",
+          "state": "ENABLED",
+          "variants": {
+            "off": false,
+            "on": true
+          }
         },
         "recommendationCacheFailure": {
+          "defaultVariant": "off",
           "description": "Fail recommendation service cache",
           "state": "ENABLED",
           "variants": {
-            "on": true,
-            "off": false
-          },
-          "defaultVariant": "off"
-        },
-        "adManualGc": {
-          "description": "Triggers full manual garbage collections in the ad service",
-          "state": "ENABLED",
-          "variants": {
-            "on": true,
-            "off": false
-          },
-          "defaultVariant": "off"
-        },
-        "adHighCpu": {
-          "description": "Triggers high cpu load in the ad service",
-          "state": "ENABLED",
-          "variants": {
-            "on": true,
-            "off": false
-          },
-          "defaultVariant": "off"
-        },
-        "adFailure": {
-          "description": "Fail ad service",
-          "state": "ENABLED",
-          "variants": {
-            "on": true,
-            "off": false
-          },
-          "defaultVariant": "off"
-        },
-        "kafkaQueueProblems": {
-          "description": "Overloads Kafka queue while simultaneously introducing a consumer side delay leading to a lag spike",
-          "state": "ENABLED",
-          "variants": {
-            "on": 100,
-            "off": 0
-          },
-          "defaultVariant": "off"
-        },
-        "cartFailure": {
-          "description": "Fail cart service",
-          "state": "ENABLED",
-          "variants": {
-            "on": true,
-            "off": false
-          },
-          "defaultVariant": "off"
-        },
-        "paymentFailure": {
-          "description": "Fail payment service charge requests n%",
-          "state": "ENABLED",
-          "variants": {
-            "100%": 1,
-            "90%": 0.95,
-            "75%": 0.75,
-            "50%": 0.5,
-            "25%": 0.25,
-            "10%": 0.1,
-            "off": 0
-          },
-          "defaultVariant": "off"
-        },
-        "paymentUnreachable": {
-          "description": "Payment service is unavailable",
-          "state": "ENABLED",
-          "variants": {
-            "on": true,
-            "off": false
-          },
-          "defaultVariant": "off"
-        },
-        "loadGeneratorFloodHomepage": {
-          "description": "Flood the frontend with a large amount of requests.",
-          "state": "ENABLED",
-          "variants": {
-            "on": 100,
-            "off": 0
-          },
-          "defaultVariant": "off"
-        },
-        "imageSlowLoad": {
-          "description": "slow loading images in the frontend",
-          "state": "ENABLED",
-          "variants": {
-            "10sec": 10000,
-            "5sec": 5000,
-            "off": 0
-          },
-          "defaultVariant": "off"
-        },
-        "failedReadinessProbe": {
-          "description": "readiness probe failure for cart service",
-          "state": "ENABLED",
-          "variants": {
-            "on": true,
-            "off": false
-          },
-          "defaultVariant": "off"
-        },
-        "emailMemoryLeak": {
-          "description": "Memory leak in the email service.",
-          "state": "ENABLED",
-          "variants": {
-            "off": 0,
-            "1x": 1,
-            "10x": 10,
-            "100x": 100,
-            "1000x": 1000,
-            "10000x": 10000
-          },
-          "defaultVariant": "off"
+            "off": false,
+            "on": true
+          }
         }
       }
     }
@@ -590,7 +641,9 @@ data:
     );
 
     -- Product Catalog Service: grant permission to schema
-    GRANT SELECT ON ALL TABLES IN SCHEMA catalog TO otelu;
+    -- UPDATE is required to acquire the ACCESS EXCLUSIVE lock used by the
+    -- productCatalogLockContention fault-injection flag
+    GRANT SELECT, UPDATE ON ALL TABLES IN SCHEMA catalog TO otelu;
 
     -- Product Catalog Service: add product data
     INSERT INTO catalog.products (id, name, description, picture, price_currency_code, price_units, price_nanos, categories)
@@ -611,6 +664,43 @@ metadata:
     app.kubernetes.io/part-of: opentelemetry-demo
     app.kubernetes.io/version: 2.2.0
   name: postgresql-init
+  namespace: otel-demo
+---
+apiVersion: v1
+data:
+  otel-config.yml: |
+    file_format: "1.0"
+    disabled: false
+    logger_provider:
+      processors:
+        - batch:
+            exporter:
+              otlp_grpc:
+                endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+    meter_provider:
+      readers:
+        - periodic:
+            exporter:
+              otlp_grpc:
+                endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+                temporality_preference: ${OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE:-cumulative}
+    tracer_provider:
+      processors:
+        - batch:
+            exporter:
+              otlp_grpc:
+                endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+    propagator:
+      composite:
+        - tracecontext:
+        - baggage:
+    resource:
+      attributes_list: ${OTEL_RESOURCE_ATTRIBUTES}
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/part-of: opentelemetry-demo
+  name: product-catalog-otel-config
   namespace: otel-demo
 ---
 apiVersion: v1
@@ -859,25 +949,6 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app.kubernetes.io/component: llm
-    app.kubernetes.io/name: llm
-    app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.2.0
-    opentelemetry.io/name: llm
-  name: llm
-spec:
-  ports:
-  - name: tcp-service
-    port: 8000
-    targetPort: 8000
-  selector:
-    opentelemetry.io/name: llm
-  type: ClusterIP
----
-apiVersion: v1
-kind: Service
-metadata:
-  labels:
     app.kubernetes.io/component: load-generator
     app.kubernetes.io/name: load-generator
     app.kubernetes.io/part-of: opentelemetry-demo
@@ -948,25 +1019,6 @@ spec:
     targetPort: 8080
   selector:
     opentelemetry.io/name: product-catalog
-  type: ClusterIP
----
-apiVersion: v1
-kind: Service
-metadata:
-  labels:
-    app.kubernetes.io/component: product-reviews
-    app.kubernetes.io/name: product-reviews
-    app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.2.0
-    opentelemetry.io/name: product-reviews
-  name: product-reviews
-spec:
-  ports:
-  - name: tcp-service
-    port: 3551
-    targetPort: 3551
-  selector:
-    opentelemetry.io/name: product-reviews
   type: ClusterIP
 ---
 apiVersion: v1
@@ -1105,12 +1157,12 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-accounting
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.1.0-accounting
         imagePullPolicy: IfNotPresent
         name: accounting
         resources:
           limits:
-            memory: 120Mi
+            memory: 256Mi
         volumeMounts: null
       initContainers:
       - command:
@@ -1169,7 +1221,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-ad
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.1.0-ad
         imagePullPolicy: IfNotPresent
         name: ad
         ports:
@@ -1177,7 +1229,7 @@ spec:
           name: service
         resources:
           limits:
-            memory: 300Mi
+            memory: 512Mi
         volumeMounts: null
       serviceAccountName: opentelemetry-demo
       volumes: []
@@ -1241,7 +1293,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-cart
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.1.0-cart
         imagePullPolicy: IfNotPresent
         name: cart
         ports:
@@ -1314,6 +1366,12 @@ spec:
           value: "8013"
         - name: GOMEMLIMIT
           value: 16MiB
+        - name: OTEL_COLLECTOR_NAME
+          value: otel-collector
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://$(OTEL_COLLECTOR_NAME):4318
+        - name: OTEL_EXPORTER_OTLP_PROTOCOL
+          value: http/protobuf
         - name: SW_APM_SERVICE_TOKEN
           valueFrom:
             secretKeyRef:
@@ -1325,7 +1383,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-checkout
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.1.0-checkout
         imagePullPolicy: IfNotPresent
         name: checkout
         ports:
@@ -1333,7 +1391,7 @@ spec:
           name: service
         resources:
           limits:
-            memory: 20Mi
+            memory: 32Mi
         volumeMounts: null
       initContainers:
       - command:
@@ -1384,7 +1442,7 @@ spec:
         - name: OTEL_EXPORTER_OTLP_ENDPOINT
           value: http://$(OTEL_COLLECTOR_NAME):4317
         - name: VERSION
-          value: 2.2.0
+          value: 3.1.0
         - name: IPV6_ENABLED
           value: "false"
         - name: OTEL_SDK_DISABLED
@@ -1392,7 +1450,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: ghcr.io/open-telemetry/demo:2.2.0-currency
+        image: ghcr.io/open-telemetry/demo:3.1.0-currency
         imagePullPolicy: IfNotPresent
         name: currency
         ports:
@@ -1454,7 +1512,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-email
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.1.0-email
         imagePullPolicy: IfNotPresent
         name: email
         ports:
@@ -1521,7 +1579,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: ghcr.io/open-feature/flagd:v0.12.9
+        image: ghcr.io/open-feature/flagd:v0.16.0
         imagePullPolicy: IfNotPresent
         name: flagd
         ports:
@@ -1552,7 +1610,7 @@ spec:
           value: yYrECL4qbNwleYInGJYvVnSkwJuSQJ4ijPTx5tirGUXrbznFIBFVJdPl5t6O9ASw
         - name: PHX_HOST
           value: localhost
-        image: ghcr.io/open-telemetry/demo:2.2.0-flagd-ui
+        image: ghcr.io/open-telemetry/demo:3.1.0-flagd-ui
         imagePullPolicy: IfNotPresent
         name: flagd-ui
         ports:
@@ -1635,12 +1693,12 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-fraud-detection
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.1.0-fraud-detection
         imagePullPolicy: IfNotPresent
         name: fraud-detection
         resources:
           limits:
-            memory: 300Mi
+            memory: 512Mi
         volumeMounts: null
       initContainers:
       - command:
@@ -1696,8 +1754,6 @@ spec:
           value: currency:8080
         - name: PRODUCT_CATALOG_ADDR
           value: product-catalog:8080
-        - name: PRODUCT_REVIEWS_ADDR
-          value: product-reviews:3551
         - name: RECOMMENDATION_ADDR
           value: recommendation:8080
         - name: SHIPPING_ADDR
@@ -1721,7 +1777,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-frontend
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.1.0-frontend
         imagePullPolicy: IfNotPresent
         name: frontend
         ports:
@@ -1807,6 +1863,22 @@ spec:
           value: jaeger
         - name: JAEGER_UI_PORT
           value: "16686"
+        - name: CHATBOT_HOST
+          value: chatbot
+        - name: CHATBOT_PORT
+          value: "7860"
+        - name: OPAMP_SERVER_HOST
+          value: opamp-server
+        - name: OPAMP_SERVER_UI_PORT
+          value: "4321"
+        - name: TELEMETRY_DOCS_HOST
+          value: telemetry-docs
+        - name: TELEMETRY_DOCS_PORT
+          value: "8000"
+        - name: FIREPIT_HOST
+          value: firepit
+        - name: FIREPIT_PORT
+          value: "8080"
         - name: LOCUST_WEB_HOST
           value: load-generator
         - name: LOCUST_WEB_PORT
@@ -1822,7 +1894,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: ghcr.io/open-telemetry/demo:2.2.0-frontend-proxy
+        image: ghcr.io/open-telemetry/demo:3.1.0-frontend-proxy
         imagePullPolicy: IfNotPresent
         name: frontend-proxy
         ports:
@@ -1830,7 +1902,7 @@ spec:
           name: service
         resources:
           limits:
-            memory: 65Mi
+            memory: 90Mi
         securityContext:
           runAsGroup: 101
           runAsNonRoot: true
@@ -1890,7 +1962,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: ghcr.io/open-telemetry/demo:2.2.0-image-provider
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.1.0-image-provider
         imagePullPolicy: IfNotPresent
         name: image-provider
         ports:
@@ -1935,7 +2007,7 @@ spec:
           value: PLAINTEXT://kafka:9092
         - name: KAFKA_HEAP_OPTS
           value: -Xmx400M -Xms400M
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-kafka
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.1.0-kafka
         imagePullPolicy: IfNotPresent
         name: kafka
         ports:
@@ -1945,65 +2017,11 @@ spec:
           name: controller
         resources:
           limits:
-            memory: 600Mi
+            memory: 700Mi
         securityContext:
           runAsGroup: 1000
           runAsNonRoot: true
           runAsUser: 1000
-        volumeMounts: null
-      serviceAccountName: opentelemetry-demo
-      volumes: []
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
-    app.kubernetes.io/component: llm
-    app.kubernetes.io/name: llm
-    app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.2.0
-    opentelemetry.io/name: llm
-  name: llm
-spec:
-  replicas: 1
-  revisionHistoryLimit: 10
-  selector:
-    matchLabels:
-      opentelemetry.io/name: llm
-  template:
-    metadata:
-      annotations:
-        resource.opentelemetry.io/service.namespace: otel-demo
-      labels:
-        app.kubernetes.io/component: llm
-        app.kubernetes.io/name: llm
-        app.kubernetes.io/version: 2.2.0
-        opentelemetry.io/name: llm
-    spec:
-      containers:
-      - env:
-        - name: OTEL_SERVICE_NAME
-          value: astronomyshop-llm
-        - name: OTEL_COLLECTOR_NAME
-          value: otel-collector
-        - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
-          value: cumulative
-        - name: FLAGD_HOST
-          value: flagd
-        - name: FLAGD_PORT
-          value: "8013"
-        - name: OTEL_SDK_DISABLED
-          value: $(UPSTREAM_DISTRO_DISABLED)
-        envFrom:
-        - configMapRef:
-            name: swo-config
-        image: ghcr.io/open-telemetry/demo:2.2.0-llm
-        imagePullPolicy: IfNotPresent
-        name: llm
-        ports:
-        - containerPort: 8000
-          name: service
-        resources: null
         volumeMounts: null
       serviceAccountName: opentelemetry-demo
       volumes: []
@@ -2073,7 +2091,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: ghcr.io/open-telemetry/demo:2.2.0-load-generator
+        image: ghcr.io/open-telemetry/demo:3.1.0-load-generator
         imagePullPolicy: IfNotPresent
         name: load-generator
         ports:
@@ -2114,6 +2132,12 @@ spec:
     spec:
       containers:
       - env:
+        - name: OTEL_SERVICE_NAME
+          value: astronomyshop-payment
+        - name: OTEL_COLLECTOR_NAME
+          value: otel-collector
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://$(OTEL_COLLECTOR_NAME):4318
         - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
           value: cumulative
         - name: PAYMENT_PORT
@@ -2135,7 +2159,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-payment
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.1.0-payment
         imagePullPolicy: IfNotPresent
         name: payment
         ports:
@@ -2194,6 +2218,12 @@ spec:
           value: postgres://otelu:otelp@postgresql/otel?sslmode=disable
         - name: OTEL_SEMCONV_STABILITY_OPT_IN
           value: database
+        - name: OTEL_COLLECTOR_NAME
+          value: otel-collector
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://$(OTEL_COLLECTOR_NAME):4317
+        - name: OTEL_CONFIG_FILE
+          value: /otel-config.yml
         - name: SW_APM_SERVICE_TOKEN
           valueFrom:
             secretKeyRef:
@@ -2205,7 +2235,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-product-catalog
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.1.0-product-catalog
         imagePullPolicy: IfNotPresent
         name: product-catalog
         ports:
@@ -2214,89 +2244,15 @@ spec:
         resources:
           limits:
             memory: 100Mi
-        volumeMounts: null
+        volumeMounts:
+        - mountPath: /otel-config.yml
+          name: otel-config
+          subPath: otel-config.yml
       serviceAccountName: opentelemetry-demo
-      volumes: []
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
-    app.kubernetes.io/component: product-reviews
-    app.kubernetes.io/name: product-reviews
-    app.kubernetes.io/part-of: opentelemetry-demo
-    app.kubernetes.io/version: 2.2.0
-    opentelemetry.io/name: product-reviews
-  name: product-reviews
-spec:
-  replicas: 1
-  revisionHistoryLimit: 10
-  selector:
-    matchLabels:
-      opentelemetry.io/name: product-reviews
-  template:
-    metadata:
-      annotations:
-        resource.opentelemetry.io/service.namespace: otel-demo
-      labels:
-        app.kubernetes.io/component: product-reviews
-        app.kubernetes.io/name: product-reviews
-        app.kubernetes.io/version: 2.2.0
-        opentelemetry.io/name: product-reviews
-    spec:
-      containers:
-      - env:
-        - name: OTEL_SERVICE_NAME
-          value: astronomyshop-productreviews
-        - name: OTEL_COLLECTOR_NAME
-          value: otel-collector
-        - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
-          value: cumulative
-        - name: OPENAI_API_KEY
-          value: dummy
-        - name: LLM_MODEL
-          value: astronomy-llm
-        - name: LLM_HOST
-          value: llm
-        - name: LLM_PORT
-          value: "8000"
-        - name: LLM_BASE_URL
-          value: http://$(LLM_HOST):$(LLM_PORT)/v1
-        - name: PRODUCT_REVIEWS_PORT
-          value: "3551"
-        - name: PRODUCT_CATALOG_ADDR
-          value: product-catalog:8080
-        - name: FLAGD_HOST
-          value: flagd
-        - name: FLAGD_PORT
-          value: "8013"
-        - name: DB_CONNECTION_STRING
-          value: host=postgresql user=otelu password=otelp dbname=otel
-        - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
-          value: python
-        - name: OTEL_PYTHON_LOG_CORRELATION
-          value: "true"
-        - name: OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
-          value: "true"
-        - name: OTEL_EXPORTER_OTLP_ENDPOINT
-          value: http://$(OTEL_COLLECTOR_NAME):4317
-        - name: OTEL_SDK_DISABLED
-          value: $(UPSTREAM_DISTRO_DISABLED)
-        envFrom:
-        - configMapRef:
-            name: swo-config
-        image: ghcr.io/open-telemetry/demo:2.2.0-product-reviews
-        imagePullPolicy: IfNotPresent
-        name: product-reviews
-        ports:
-        - containerPort: 3551
-          name: service
-        resources:
-          limits:
-            memory: 100Mi
-        volumeMounts: null
-      serviceAccountName: opentelemetry-demo
-      volumes: []
+      volumes:
+      - configMap:
+          name: product-catalog-otel-config
+        name: otel-config
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -2326,6 +2282,12 @@ spec:
     spec:
       containers:
       - env:
+        - name: OTEL_SERVICE_NAME
+          value: astronomyshop-quote
+        - name: OTEL_COLLECTOR_NAME
+          value: otel-collector
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://$(OTEL_COLLECTOR_NAME):4318
         - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
           value: cumulative
         - name: QUOTE_PORT
@@ -2347,7 +2309,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-quote
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.1.0-quote
         imagePullPolicy: IfNotPresent
         name: quote
         ports:
@@ -2392,6 +2354,12 @@ spec:
     spec:
       containers:
       - env:
+        - name: OTEL_COLLECTOR_NAME
+          value: otel-collector
+        - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
+          value: http://$(OTEL_COLLECTOR_NAME):4317
+        - name: OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
+          value: http://$(OTEL_COLLECTOR_NAME):4317
         - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
           value: cumulative
         - name: RECOMMENDATION_PORT
@@ -2421,7 +2389,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:2.2.0-recommendation
+        image: public.ecr.aws/solarwinds-online-demos/swo-demo/astronomyshop:3.1.0-recommendation
         imagePullPolicy: IfNotPresent
         name: recommendation
         ports:
@@ -2472,8 +2440,14 @@ spec:
           value: "8080"
         - name: QUOTE_ADDR
           value: http://quote:8080
+        - name: FLAGD_HOST
+          value: flagd
+        - name: FLAGD_PORT
+          value: "8013"
         - name: OTEL_EXPORTER_OTLP_ENDPOINT
-          value: http://$(OTEL_COLLECTOR_NAME):4317
+          value: http://$(OTEL_COLLECTOR_NAME):4318
+        - name: OTEL_EXPORTER_OTLP_PROTOCOL
+          value: http/protobuf
         - name: IPV6_ENABLED
           value: "false"
         - name: OTEL_SDK_DISABLED
@@ -2481,7 +2455,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: ghcr.io/open-telemetry/demo:2.2.0-shipping
+        image: ghcr.io/open-telemetry/demo:3.1.0-shipping
         imagePullPolicy: IfNotPresent
         name: shipping
         ports:
@@ -2591,7 +2565,7 @@ spec:
     spec:
       containers:
       - env: []
-        image: valkey/valkey:9.0.1-alpine3.23
+        image: ghcr.io/valkey-io/valkey:9.0.4-alpine3.23
         imagePullPolicy: Always
         name: valkey-cart
         ports:
@@ -2764,7 +2738,7 @@ spec:
               apiVersion: v1
               fieldPath: status.podIP
         - name: GOMEMLIMIT
-          value: 160MiB
+          value: 320MiB
         - name: SW_APM_SERVICE_TOKEN
           valueFrom:
             secretKeyRef:
@@ -2774,7 +2748,7 @@ spec:
         envFrom:
         - configMapRef:
             name: swo-config
-        image: otel/opentelemetry-collector-contrib:0.142.0
+        image: otel/opentelemetry-collector-contrib:0.160.0
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2796,7 +2770,7 @@ spec:
             port: 13133
         resources:
           limits:
-            memory: 200Mi
+            memory: 400Mi
         securityContext: {}
         volumeMounts:
         - mountPath: /conf

@@ -1,44 +1,62 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-# extra settings to be merged into OpenTelemetry Collector configuration
-# do not delete this file
-
-## Example configuration for sending data to your own OTLP HTTP backend
-## Note: the spanmetrics exporter must be included in the exporters array
-## if overriding the traces pipeline.
-##
-#  exporters:
-#    otlphttp/example:
-#      endpoint: <your-endpoint-url>
+# Extras/customization layer for the OTel Collector.
+# Override this file in your fork to add exporters for your own observability backend.
 #
-#  service:
-#    pipelines:
-#      traces:
-#        exporters: [spanmetrics, otlphttp/example]
-   exporters:
-      otlphttp/swo:
-        endpoint: ${env:SW_OTEL_ADDRESS}
-        headers:
-          Authorization: Bearer ${env:SW_APM_SERVICE_TOKEN}
-        retry_on_failure:
-          enabled: true
-          initial_interval: 10s
-          max_elapsed_time: 300s
-          max_interval: 30s
-        sending_queue:
-          enabled: true
-          num_consumers: 10
-          queue_size: 1000
-        timeout: 15s
-        tls:
-          insecure: false
-  
-   service:
-     pipelines:
-       traces:
-         exporters: [otlphttp/swo]
-       metrics:
-         exporters: [otlphttp/swo]
-       logs:
-         exporters: [otlphttp/swo]
+# This file is intentionally empty. It is always loaded last, giving forks
+# a stable, well-defined seam to customize without touching upstream files.
+#
+# IMPORTANT: The OTel Collector merges config files but REPLACES arrays, not appends.
+# If you want to keep the default observability stack alongside your own exporters,
+# you must explicitly repeat the upstream exporter names in your pipeline definitions.
+#
+# Upstream exporter names (repeat these to keep them active):
+#   traces:  otlp_grpc/jaeger, debug, span_metrics
+#   metrics: otlp_http/prometheus, debug
+#   logs:    opensearch, debug
+#
+# Example:
+#
+# exporters:
+#   otlp_grpc/mybackend:
+#     endpoint: https://ingest.mybackend.com
+#
+# service:
+#   pipelines:
+#     traces:
+#       exporters: [otlp_grpc/jaeger, debug, span_metrics, otlp_grpc/mybackend]  # repeat upstream exporters
+#     metrics:
+#       receivers: [docker_stats, http_check/frontend-proxy, host_metrics, nginx, otlp, redis, span_metrics]
+#       exporters: [otlp_http/prometheus, debug, otlp_grpc/mybackend]           # repeat upstream exporters
+#     logs:
+#       exporters: [opensearch, debug, otlp_grpc/mybackend]                     # repeat upstream exporters
+
+# SolarWinds Observability: send traces, metrics and logs to SWO.
+# span_metrics must stay in the traces exporters because the metrics pipeline uses it as a receiver.
+exporters:
+  otlp_http/swo:
+    endpoint: https://${env:SW_OTEL_ADDRESS}
+    headers:
+      Authorization: Bearer ${env:SW_APM_SERVICE_TOKEN}
+    retry_on_failure:
+      enabled: true
+      initial_interval: 10s
+      max_elapsed_time: 300s
+      max_interval: 30s
+    sending_queue:
+      enabled: true
+      num_consumers: 10
+      queue_size: 1000
+    timeout: 15s
+    tls:
+      insecure: false
+
+service:
+  pipelines:
+    traces:
+      exporters: [span_metrics, otlp_http/swo]
+    metrics:
+      exporters: [otlp_http/swo]
+    logs:
+      exporters: [otlp_http/swo]
