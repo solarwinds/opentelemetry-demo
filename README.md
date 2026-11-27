@@ -66,10 +66,13 @@ For information on how to add individual services to monitoring, see
    > the [Prerequisites](#prerequisites) and `xx-yy` with your data center
    > identifier.
 
-3. Start the demo:
+3. Start the demo (equivalent to `make start`):
 
    ```shell
-   docker compose up -d
+   docker compose --env-file .env --env-file .env.override \
+     -f compose.yaml -f compose.full.yaml \
+     -f compose.observability.yaml -f compose.extras.yaml \
+     up -d
    ```
 
 4. Once running, the web store is available at <http://localhost:8080/>.
